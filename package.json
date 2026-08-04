@@ -1,0 +1,14 @@
+{
+  "name": "kuai-bartender",
+  "version": "1.0.0",
+  "description": "苦艾 AI 调酒师 · 把此刻的情绪翻译成一杯酒",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

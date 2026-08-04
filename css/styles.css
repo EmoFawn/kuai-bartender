@@ -1,0 +1,849 @@
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400&display=swap');
+:root{
+  --bg:#0e0c08;--surface:#1a1710;--card:rgba(30,27,18,0.96);
+  --gold:#c9a96e;--gold2:#a07840;--gold-dim:rgba(201,169,110,0.15);
+  --text:#e8ddd0;--muted:#6b6255;--border:rgba(201,169,110,0.14);
+  --white-btn:#f0ebe2;--white-btn-text:#0e0c08;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;background:var(--bg);}
+body{font-family:'Noto Serif SC','Songti SC','STSong','SimSun',serif;color:var(--text);}
+
+/* ======= 滚动条（默认的白色滚动条在深色酒馆里非常突兀）=======
+   统一改成极细的暗金色，轨道透明、悬停才提亮。 */
+*{scrollbar-width:thin;scrollbar-color:rgba(201,169,110,0.28) transparent;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{
+  background:rgba(201,169,110,0.26);
+  border-radius:6px;
+  transition:background 0.25s;
+}
+::-webkit-scrollbar-thumb:hover{background:rgba(201,169,110,0.5);}
+::-webkit-scrollbar-corner{background:transparent;}
+
+/* ======= PAGES ======= */
+/* 用 .hidden 类彻底移出渲染树，避免子元素（如 .sub.active）
+   用 visibility:visible / pointer-events:all 覆盖父级隐藏状态、
+   造成"隐形却可命中"的遮挡层挡住落地页按钮 */
+.page{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+  opacity:0;pointer-events:none;transition:opacity 0.7s ease;overflow:hidden;}
+.page.active{opacity:1;pointer-events:all;}
+.page.hidden{display:none !important;}
+
+/* ======= LANDING ======= */
+#landing{justify-content:center;background:var(--bg);}
+.landing-bg{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 55%, rgba(100,70,20,0.18) 0%, transparent 70%);
+  animation:bgGlow 7s ease-in-out infinite;
+}
+@keyframes bgGlow{
+  0%,100%{opacity:0.75;transform:scale(1);}
+  50%{opacity:1;transform:scale(1.06);}
+}
+/* 漂浮的微尘（参考图里若隐若现的光点） */
+.landing-dust{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+.landing-dust i{
+  position:absolute;width:2px;height:2px;border-radius:50%;
+  background:var(--gold);opacity:0;
+  animation:dustFloat linear infinite;
+}
+@keyframes dustFloat{
+  0%{opacity:0;transform:translateY(20px) scale(0.6);}
+  20%{opacity:0.5;}
+  70%{opacity:0.32;}
+  100%{opacity:0;transform:translateY(-90px) scale(1);}
+}
+
+/* ---- 入场：各元素依次浮现（参考 P3→P4 的渐次显影）---- */
+@keyframes riseIn{
+  from{opacity:0;transform:translateY(14px);}
+  to{opacity:1;transform:translateY(0);}
+}
+/* 装饰线：从中心向两侧展开 */
+@keyframes lineExpand{
+  from{opacity:0;transform:scaleX(0);}
+  to{opacity:0.5;transform:scaleX(1);}
+}
+@keyframes diamondIn{
+  from{opacity:0;transform:rotate(45deg) scale(0);}
+  to{opacity:0.7;transform:rotate(45deg) scale(1);}
+}
+/* 汉字：一个个显影，带轻微上浮和模糊消散 */
+@keyframes chReveal{
+  from{opacity:0;transform:translateY(18px);filter:blur(6px);letter-spacing:0.3em;}
+  to{opacity:1;transform:translateY(0);filter:blur(0);letter-spacing:0.1em;}
+}
+
+.landing-deco{
+  display:flex;align-items:center;gap:10px;margin-bottom:28px;
+}
+.deco-line{
+  width:32px;height:1px;background:var(--gold);opacity:0;
+  animation:lineExpand 1s ease 0.15s forwards;
+}
+.deco-diamond{
+  width:5px;height:5px;background:var(--gold);opacity:0;
+  transform:rotate(45deg);
+  animation:diamondIn 0.7s cubic-bezier(.34,1.56,.64,1) 0.5s forwards;
+}
+.landing-title{
+  font-size:72px;font-weight:700;letter-spacing:0.25em;
+  color:var(--gold);
+  font-family:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  text-shadow:0 0 60px rgba(201,169,110,0.3);
+  line-height:1;margin-bottom:8px;
+  display:flex;justify-content:center;align-items:flex-end;gap:0.22em;
+}
+/* 汉字 + 拼音 组合单元 */
+.ch-unit{
+  display:flex;flex-direction:column;align-items:center;
+  letter-spacing:0;
+}
+.ch-unit .ch{
+  display:block;line-height:1;
+  letter-spacing:0.1em;text-indent:0.1em;
+  opacity:0;
+  animation:chReveal 1.4s cubic-bezier(.2,.8,.2,1) forwards;
+}
+/* 「苦」先出，「艾」后出 */
+.ch-unit:nth-child(1) .ch{animation-delay:0.7s;}
+.ch-unit:nth-child(2) .ch{animation-delay:1.15s;}
+/* 拼音基础样式 */
+.py{
+  font-family:'Playfair Display','Georgia',serif;
+  font-size:15px;line-height:1;
+  margin-bottom:12px;
+  position:relative;
+  opacity:0;
+  animation:riseIn 1.1s ease forwards;
+}
+/* ku —— 小写、内敛、斜体，像旧书上的注音 */
+.py-ku{
+  font-style:italic;font-weight:400;
+  letter-spacing:0.18em;text-indent:0.18em;
+  color:rgba(201,169,110,0.55);
+  animation-delay:1.7s;
+}
+/* AI —— 大写、挺立、发光，是这杯酒真正的调酒师 */
+.py-ai{
+  font-style:normal;font-weight:600;
+  letter-spacing:0.3em;text-indent:0.3em;
+  color:#e8c880;
+  text-shadow:0 0 14px rgba(232,200,128,0.55),0 0 32px rgba(201,169,110,0.28);
+  /* 先随大家一起浮现，落位后再进入无限呼吸 */
+  animation:riseIn 1.1s ease 1.95s forwards,
+            aiBreath 3.6s ease-in-out 3.05s infinite;
+}
+@keyframes aiBreath{
+  0%,100%{opacity:0.82;text-shadow:0 0 12px rgba(232,200,128,0.4),0 0 28px rgba(201,169,110,0.2);}
+  50%{opacity:1;text-shadow:0 0 20px rgba(232,200,128,0.75),0 0 44px rgba(201,169,110,0.4);}
+}
+/* AI 下方一道细金线，暗示"它在工作" */
+.py-ai::after{
+  content:'';position:absolute;
+  left:0;right:0.3em;bottom:-5px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+  opacity:0.7;
+}
+.landing-en{
+  font-family:'Playfair Display','Georgia','STFangsong',serif;font-style:italic;
+  font-size:13px;letter-spacing:0.3em;color:var(--muted);
+  margin-bottom:18px;
+  opacity:0;
+  animation:riseIn 1.2s ease 2.2s forwards;
+}
+.landing-sub{
+  font-size:14px;color:var(--muted);letter-spacing:0.08em;margin-bottom:52px;
+  opacity:0;
+  animation:riseIn 1.2s ease 2.5s forwards;
+}
+.btn-door{
+  background:transparent;
+  border:1px solid rgba(201,169,110,0.5);
+  border-radius:50px;
+  padding:13px 44px;
+  color:var(--gold);
+  font-size:15px;font-family:'Noto Serif SC',serif;
+  letter-spacing:0.15em;
+  cursor:pointer;
+  transition:border-color 0.3s,color 0.3s,transform 0.3s,box-shadow 0.3s;
+  position:relative;overflow:hidden;
+  opacity:0;
+  /* 浮现后进入微弱光晕呼吸，引导点击 */
+  animation:riseIn 1.2s ease 2.85s forwards,
+            doorGlow 3.2s ease-in-out 4.05s infinite;
+}
+@keyframes doorGlow{
+  0%,100%{box-shadow:0 0 0 rgba(201,169,110,0);}
+  50%{box-shadow:0 0 22px rgba(201,169,110,0.28);}
+}
+.btn-door::before{
+  content:'';position:absolute;inset:0;
+  background:var(--gold-dim);opacity:0;transition:opacity 0.3s;
+}
+.btn-door:hover{border-color:var(--gold);color:#e8c880;transform:translateY(-1px);}
+.btn-door:hover::before{opacity:1;}
+.landing-footer{
+  position:absolute;bottom:28px;left:0;right:0;text-align:center;
+  font-size:11px;color:rgba(107,98,85,0.5);letter-spacing:0.15em;
+  opacity:0;
+  animation:riseIn 1.4s ease 3.2s forwards;
+}
+
+/* ======= MAIN APP ======= */
+#app{flex-direction:column;background:var(--bg);}
+
+/* tabs */
+.tabs{
+  width:100%;max-width:480px;
+  padding:16px 16px 0;
+  display:flex;gap:0;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.tab{
+  flex:1;text-align:center;padding:10px 0 12px;
+  font-size:12px;letter-spacing:0.05em;
+  color:var(--muted);cursor:pointer;
+  position:relative;transition:color 0.25s;
+  white-space:nowrap;
+}
+.tab.active{color:var(--gold);}
+.tab.active::after{
+  content:'';position:absolute;bottom:-1px;left:20%;right:20%;
+  height:1px;background:var(--gold);
+}
+
+/* tab panes */
+.pane{display:none;flex-direction:column;align-items:center;flex:1;overflow:hidden;width:100%;}
+.pane.active{display:flex;}
+
+/* ======= 对话调酒 PANE ======= */
+#pane-chat{position:relative;}
+
+/* sub-screens inside pane */
+.sub{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  opacity:0;pointer-events:none;visibility:hidden;
+  transition:opacity 0.45s ease,visibility 0.45s ease;overflow-y:auto;}
+.sub.active{opacity:1;pointer-events:all;visibility:visible;}
+
+/* input sub */
+.circle-wrap{
+  position:relative;width:200px;height:200px;
+  margin:28px auto 0;flex-shrink:0;
+}
+.circle-svg{width:100%;height:100%;position:absolute;top:0;left:0;}
+.liq-container{
+  position:absolute;width:168px;height:168px;top:16px;left:16px;
+  border-radius:50%;overflow:hidden;background:rgba(255,255,255,0.02);
+}
+/* 液体主体：整块液面，顶部由两层大半径"blob"旋转形成晃动的曲面 */
+.liq-body{
+  position:absolute;bottom:0;left:0;width:100%;
+  transition:height 1.1s cubic-bezier(0.4,0,0.2,1),background 1.4s ease;
+}
+/* 主液面：一个远大于容器的近圆形色块，半径略微不均，
+   绕自身中心慢速旋转 → 液面呈"大圆弧+缓慢倾斜"的荡动感（参考真实杯中液体） */
+.liq-wave{
+  position:absolute;left:50%;top:-13px;
+  width:420px;height:420px;margin-left:-210px;
+  background:inherit;
+  border-radius:45% 43% 47% 44%;
+  animation:slosh 9s linear infinite;
+}
+/* 第二层：半透明浅色，反向且不同周期旋转，
+   叠加出液面高光带 + 两波干涉的细微起伏 */
+.liq-body::after{
+  content:'';position:absolute;left:50%;top:-19px;
+  width:400px;height:400px;margin-left:-200px;
+  background:rgba(255,255,255,0.13);
+  border-radius:47% 44% 43% 46%;
+  animation:slosh 13s linear infinite reverse;
+  pointer-events:none;
+}
+@keyframes slosh{
+  0%{transform:rotate(0deg);}
+  100%{transform:rotate(360deg);}
+}
+.circle-hint{
+  position:absolute;bottom:-32px;left:50%;transform:translateX(-50%);
+  font-family:'Playfair Display','Georgia',serif;font-style:italic;
+  font-size:13px;color:var(--muted);white-space:nowrap;
+}
+.input-area{width:100%;max-width:440px;padding:0 20px;margin-top:60px;flex-shrink:0;}
+.textarea-wrap{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:16px 18px 12px;transition:border-color 0.3s;
+}
+.textarea-wrap:focus-within{border-color:rgba(201,169,110,0.35);}
+textarea{
+  width:100%;background:transparent;border:none;outline:none;
+  color:var(--text);font-family:'Noto Serif SC',serif;
+  font-size:15px;line-height:1.75;resize:none;min-height:72px;
+}
+textarea::placeholder{color:var(--muted);}
+.char-row{display:flex;justify-content:space-between;align-items:center;margin-top:6px;}
+.char-count{font-size:11px;color:var(--muted);font-family:'Inter',-apple-system,sans-serif;}
+.prog-bar{flex:1;height:1px;background:rgba(255,255,255,0.06);border-radius:1px;margin:0 12px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--gold);width:0%;transition:width 0.3s;border-radius:1px;}
+
+.btn-wrap{width:100%;max-width:440px;padding:16px 20px 24px;flex-shrink:0;}
+.btn-main{
+  width:100%;background:var(--white-btn);color:var(--white-btn-text);
+  border:none;border-radius:50px;padding:15px 24px;
+  font-size:14px;font-family:'Noto Serif SC','Songti SC','STSong',serif;letter-spacing:0.05em;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all 0.25s;
+}
+.btn-main:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,0.4);}
+.btn-main:active{transform:translateY(0);}
+
+/* mixing sub */
+#sub-mixing .circle-wrap{margin-top:60px;}
+.mix-steps{width:100%;max-width:440px;padding:52px 28px 0;flex:1;}
+.mix-step{
+  display:flex;align-items:flex-start;gap:14px;
+  opacity:0;transform:translateY(8px);
+  transition:all 0.4s ease;margin-bottom:18px;
+}
+.mix-step.vis{opacity:1;transform:translateY(0);}
+.step-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);margin-top:8px;flex-shrink:0;}
+.step-txt{font-size:13px;color:var(--muted);line-height:1.6;}
+.mix-hint{position:absolute;bottom:-32px;left:50%;transform:translateX(-50%);
+  font-family:'Playfair Display',serif;font-style:italic;font-size:13px;color:var(--muted);white-space:nowrap;}
+
+/* result sub */
+#sub-result{padding-bottom:36px;}
+.res-card{
+  width:calc(100% - 28px);max-width:432px;
+  margin:16px auto 0;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:22px;overflow:hidden;
+}
+.res-hd{padding:24px 24px 0;text-align:center;}
+.res-label{font-family:'Inter',-apple-system,sans-serif;font-size:9px;letter-spacing:0.25em;color:var(--muted);margin-bottom:8px;}
+.res-name-zh{font-size:24px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1.3;}
+.res-name-en{font-family:'Playfair Display','Georgia',serif;font-style:italic;font-size:13px;color:var(--muted);margin-bottom:20px;}
+/* ======= 酒杯视觉（SVG 真实杯型） ======= */
+.glass-vis{width:150px;height:180px;margin:4px auto 18px;position:relative;}
+.glass-glow{position:absolute;left:50%;top:46%;width:130px;height:130px;
+  transform:translate(-50%,-50%);border-radius:50%;
+  opacity:0.4;filter:blur(30px);transition:background 1.2s ease;}
+.glass-svg{position:relative;width:100%;height:100%;overflow:visible;}
+/* 液体轻微晃动 */
+@keyframes liqSway{0%,100%{transform:translateX(0) rotate(0deg);}50%{transform:translateX(1.5px) rotate(0.4deg);}}
+.liq-fill{animation:liqSway 5s ease-in-out infinite;transform-origin:center bottom;}
+/* 气泡上浮 */
+@keyframes bubbleUp{
+  0%{transform:translateY(0) scale(0.6);opacity:0;}
+  20%{opacity:0.75;}
+  100%{transform:translateY(-46px) scale(1.1);opacity:0;}
+}
+.bub{animation:bubbleUp 3.4s ease-in infinite;}
+.res-info{padding:0 20px 8px;}
+.info-row{display:flex;justify-content:space-between;align-items:center;
+  padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;}
+.info-lbl{color:var(--muted);font-family:'Inter',-apple-system,sans-serif;letter-spacing:0.04em;}
+.info-val{color:var(--text);}
+.notes-row{display:flex;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
+.note-col{flex:1;text-align:center;padding:0 6px;border-right:1px solid rgba(255,255,255,0.05);}
+.note-col:last-child{border-right:none;}
+.note-lbl{font-size:9px;color:var(--muted);letter-spacing:0.1em;font-family:'Inter',-apple-system,sans-serif;margin-bottom:3px;}
+.note-val{font-size:13px;color:var(--text);}
+.str-row{padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
+.str-track{height:2px;background:rgba(255,255,255,0.07);border-radius:2px;margin-top:6px;overflow:hidden;}
+.str-fill{height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));
+  border-radius:2px;transition:width 1s cubic-bezier(0.4,0,0.2,1);}
+.res-quote{padding:14px 20px 18px;text-align:center;}
+/* AI 读到的内容 */
+.reading-row{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.05);}
+.reading-lbl{font-size:9px;letter-spacing:0.16em;color:var(--muted);
+  font-family:'Inter',-apple-system,sans-serif;display:block;margin-bottom:4px;}
+.reading-txt{font-size:12px;color:var(--gold);line-height:1.6;}
+.mode-badge{margin-top:9px;font-size:9px;letter-spacing:0.12em;color:rgba(107,98,85,0.75);
+  font-family:'Inter',-apple-system,sans-serif;}
+.quote-txt{font-size:12px;color:var(--muted);font-style:italic;line-height:1.75;}
+.res-actions{width:calc(100% - 28px);max-width:432px;margin:12px auto 0;display:flex;gap:10px;}
+.btn-sec{flex:1;background:var(--white-btn);color:var(--white-btn-text);
+  border:none;border-radius:50px;padding:13px;font-size:13px;
+  font-family:'Noto Serif SC','Songti SC',serif;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:5px;transition:all 0.2s;}
+.btn-sec:hover{transform:translateY(-1px);}
+.btn-ico{width:48px;height:48px;background:var(--surface);border:1px solid var(--border);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:16px;transition:all 0.2s;flex-shrink:0;}
+.btn-ico:hover{border-color:var(--gold);}
+/* ======= BARTENDER CARD ======= */
+/* 替代 ALSO TRY，同时用于心情调酒底部 */
+.bar-card{
+  width:calc(100% - 28px);max-width:432px;margin:10px auto 0;
+  background:linear-gradient(135deg,rgba(30,24,14,0.98) 0%,rgba(22,18,10,0.98) 100%);
+  border:1px solid rgba(201,169,110,0.2);
+  border-radius:18px;overflow:hidden;position:relative;
+  padding:18px 20px 16px;
+}
+/* 左侧金线 accent */
+.bar-card::before{
+  content:'';position:absolute;left:0;top:12px;bottom:12px;width:2px;
+  background:linear-gradient(180deg,transparent,var(--gold),transparent);
+  border-radius:0 2px 2px 0;opacity:0.7;
+}
+.bar-card-tag{
+  position:absolute;top:14px;right:16px;
+  font-family:'Inter',-apple-system,sans-serif;font-size:9px;letter-spacing:0.15em;
+  color:rgba(201,169,110,0.55);padding:3px 8px;
+  border:1px solid rgba(201,169,110,0.18);border-radius:999px;
+  background:rgba(201,169,110,0.06);
+}
+.bar-card-headline{
+  font-size:17px;font-weight:700;
+  font-family:'Noto Serif SC','Songti SC','STSong',serif;
+  color:var(--text);line-height:1.35;
+  margin-bottom:8px;padding-right:64px; /* avoid tag overlap */
+}
+.bar-card-body{
+  font-size:13px;line-height:1.85;color:rgba(232,221,208,0.72);
+  font-family:'Noto Serif SC','Songti SC','STSong',serif;
+}
+/* loading 占位脉冲 */
+@keyframes cardPulse{0%,100%{opacity:0.25;}50%{opacity:0.55;}}
+.bar-card.loading .bar-card-headline,
+.bar-card.loading .bar-card-body{
+  background:rgba(201,169,110,0.12);border-radius:4px;color:transparent;
+  animation:cardPulse 1.4s ease-in-out infinite;
+}
+
+/* ======= 心情调酒 PANE ======= */
+#pane-mood{position:relative;}
+.mood-hd{text-align:center;padding:18px 20px 6px;flex-shrink:0;}
+.mood-title{font-size:17px;color:var(--text);letter-spacing:0.05em;margin-bottom:5px;}
+.mood-tip{font-size:11px;color:var(--muted);letter-spacing:0.06em;}
+
+/* 气泡池：16 个心情词分 4 行，需要足够高度；允许纵向滚动兜底 */
+.bubble-field{
+  position:relative;width:100%;max-width:440px;
+  height:310px;margin:4px auto 0;flex-shrink:0;
+}
+/* --bs 让 hover 缩放能与漂浮 keyframes 共存（否则 animation 会覆盖 hover 的 transform） */
+@property --bs{syntax:'<number>';inherits:false;initial-value:1;}
+.bubble{
+  --bs:1;
+  position:absolute;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:grab;user-select:none;touch-action:none;
+  border:1px solid rgba(255,255,255,0.16);
+  backdrop-filter:blur(3px);
+  transition:--bs 0.28s cubic-bezier(.34,1.56,.64,1),opacity 0.3s,box-shadow 0.3s;
+  animation:bubFloat 5s ease-in-out infinite;
+  will-change:transform;
+}
+.bubble:hover{--bs:1.09;box-shadow:0 6px 22px rgba(0,0,0,0.35);z-index:5;}
+/* 拖拽幽灵：不参与漂浮动画，transform 完全由 JS 内联控制 */
+.bubble.dragging{cursor:grabbing;animation:none !important;z-index:100;transition:none;
+  box-shadow:0 14px 34px rgba(0,0,0,0.5);}
+.bubble.used{opacity:0.16;pointer-events:none;--bs:0.82;}
+.bub-emo{font-size:18px;line-height:1;}
+.bub-txt{font-size:10px;color:rgba(255,255,255,0.92);margin-top:2px;letter-spacing:0.02em;
+  max-width:92%;text-align:center;line-height:1.2;word-break:break-all;}
+@keyframes bubFloat{
+  0%,100%{transform:translateY(0) scale(var(--bs));}
+  50%{transform:translateY(-7px) scale(var(--bs));}
+}
+
+/* 酒杯投放区 */
+.shaker-zone{
+  position:relative;width:170px;height:160px;
+  margin:2px auto 0;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:20px;
+  transition:all 0.3s;
+}
+.shaker-zone.hover{
+  background:rgba(201,169,110,0.09);
+  box-shadow:0 0 0 1px rgba(201,169,110,0.4),0 0 30px rgba(201,169,110,0.14);
+}
+.shaker-svg{width:100%;height:100%;overflow:visible;}
+#mix-liquid,#mix-surface{transition:all 0.7s cubic-bezier(.4,0,.2,1);}
+.shaker-hint{
+  position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);
+  font-family:'Playfair Display','Georgia',serif;font-style:italic;
+  font-size:11px;color:var(--muted);white-space:nowrap;transition:opacity 0.3s;
+}
+/* 已选心情标签 */
+.picked-list{
+  position:absolute;top:-2px;left:50%;transform:translateX(-50%);
+  display:flex;gap:5px;flex-wrap:nowrap;
+}
+.picked-tag{
+  font-size:9.5px;padding:3px 8px;border-radius:999px;
+  background:rgba(0,0,0,0.42);border:1px solid rgba(255,255,255,0.18);
+  color:rgba(255,255,255,0.9);white-space:nowrap;cursor:pointer;
+  animation:tagIn 0.3s cubic-bezier(.34,1.56,.64,1);
+}
+.picked-tag:hover{border-color:var(--gold);color:var(--gold);}
+@keyframes tagIn{from{opacity:0;transform:translateY(-6px) scale(0.8);}to{opacity:1;transform:none;}}
+/* 投入时的水花 */
+@keyframes splash{
+  0%{opacity:0.9;transform:translate(-50%,0) scale(0.4);}
+  100%{opacity:0;transform:translate(-50%,-26px) scale(1.7);}
+}
+.splash{
+  position:absolute;left:50%;top:32%;width:34px;height:34px;
+  border-radius:50%;pointer-events:none;
+  animation:splash 0.6s ease-out forwards;
+}
+.btn-main:disabled{opacity:0.34;cursor:not-allowed;}
+.btn-main:disabled:hover{transform:none;box-shadow:none;}
+
+/* ======= DEEP 开关（心情调酒右上角） ======= */
+.deep-toggle{
+  position:absolute;top:14px;right:16px;z-index:30;
+  display:flex;align-items:center;gap:7px;
+  cursor:pointer;user-select:none;
+  opacity:1;transition:opacity 0.35s ease;
+}
+.deep-toggle.gone{opacity:0;pointer-events:none;}
+.deep-lbl{
+  font-family:'Inter',-apple-system,sans-serif;font-size:9px;
+  letter-spacing:0.2em;color:var(--muted);transition:color 0.3s,text-shadow 0.3s;
+}
+.deep-toggle.on .deep-lbl{color:var(--gold);text-shadow:0 0 12px rgba(201,169,110,0.45);}
+.deep-switch{
+  width:34px;height:18px;border-radius:999px;position:relative;
+  background:rgba(255,255,255,0.06);border:1px solid var(--border);
+  transition:background 0.3s,border-color 0.3s;
+}
+.deep-switch::after{
+  content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;
+  border-radius:50%;background:var(--muted);
+  transition:transform 0.32s cubic-bezier(.34,1.4,.64,1),background 0.3s,box-shadow 0.3s;
+}
+.deep-toggle.on .deep-switch{background:rgba(201,169,110,0.16);border-color:rgba(201,169,110,0.5);}
+.deep-toggle.on .deep-switch::after{
+  transform:translateX(16px);background:var(--gold);
+  box-shadow:0 0 10px rgba(201,169,110,0.8);
+}
+
+/* ======= DEEP 纵向探究 ======= */
+#mood-sub-deep{overflow:hidden;}
+/* padding 与 .mood-hd 对齐（18px 20px 6px），保证两个模式头部高度一致 */
+.deep-hd{width:100%;text-align:center;padding:18px 62px 6px;flex-shrink:0;}
+.deep-step{
+  font-family:'Inter',-apple-system,sans-serif;font-size:9px;letter-spacing:0.24em;
+  color:var(--muted);margin-bottom:5px;transition:opacity 0.3s;
+}
+.deep-q{font-size:17px;color:var(--text);line-height:1.5;min-height:26px;
+  opacity:0;transform:translateY(6px);
+  transition:opacity 0.4s ease,transform 0.4s cubic-bezier(.22,1,.36,1);}
+.deep-q.in{opacity:1;transform:none;}
+
+/* 已走过的纵向路径 */
+.deep-trail{width:100%;max-width:440px;padding:6px 26px 0;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:nowrap;min-height:22px;}
+.trail-chip{display:flex;align-items:center;gap:5px;
+  font-size:10.5px;padding:4px 10px;border-radius:999px;white-space:nowrap;
+  background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.16);
+  color:rgba(255,255,255,0.9);
+  opacity:0;transform:translateY(-5px) scale(0.9);
+  transition:opacity 0.35s ease,transform 0.35s cubic-bezier(.34,1.5,.64,1);}
+.trail-chip.in{opacity:1;transform:none;}
+.trail-chip i{width:6px;height:6px;border-radius:50%;flex-shrink:0;
+  box-shadow:0 0 7px currentColor;}
+.trail-arrow{font-size:11px;color:rgba(201,169,110,0.55);flex-shrink:0;
+  opacity:0;transition:opacity 0.35s ease;}
+.trail-arrow.in{opacity:1;}
+
+/* DEEP 气泡池：与横向模式同一套 .bubble 视觉，只是每层重新填充。
+   [布局对齐] 高度必须与 .bubble-field 保持一致，且不能用 flex:1 —— 否则
+   会吃掉所有剩余空间把酒杯一路推到底部，导致切换 DEEP 时杯子位置大幅跳动。
+   DEEP 多了一行 .deep-trail（22px），所以这里相应减去，让杯子落点几乎不动。 */
+#deep-field{
+  position:relative;width:100%;max-width:440px;
+  height:281px;flex-shrink:0;margin:2px auto 0;
+}
+/* 进/出场：不碰 transform（transform 归 bubFloat 动画），只动 opacity 与 --bs */
+.bubble.b-in{animation:bubIn 0.46s cubic-bezier(.22,1,.36,1) forwards,
+                       bubFloat 5s ease-in-out infinite;}
+@keyframes bubIn{
+  from{opacity:0;--bs:0.4;}
+  to{opacity:1;--bs:1;}
+}
+.bubble.b-out{opacity:0;--bs:0.35;animation:none !important;
+  transition:opacity 0.3s ease,--bs 0.3s ease;pointer-events:none;}
+.bubble.b-chosen{--bs:1.16;box-shadow:0 0 0 1px var(--gold),0 10px 30px rgba(0,0,0,0.5);}
+
+/* 回上一层：尺寸与普通模式的「开始调制」主按钮对齐，
+   并用 margin-top:auto 吸到底部，让两个模式的底部节奏一致。 */
+.deep-foot{width:100%;max-width:440px;padding:16px 20px 24px;flex-shrink:0;
+  margin-top:auto;display:flex;justify-content:center;}
+.deep-up{
+  width:100%;
+  font-size:14px;color:var(--gold);cursor:pointer;
+  padding:15px 24px;border-radius:50px;
+  border:1px solid rgba(201,169,110,0.42);background:transparent;
+  font-family:'Noto Serif SC','Songti SC',serif;letter-spacing:0.05em;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:color 0.25s,border-color 0.25s,background 0.25s,
+             opacity 0.32s ease,transform 0.25s,box-shadow 0.25s;
+}
+.deep-up:hover{color:#e8c880;border-color:var(--gold);
+  background:var(--gold-dim);transform:translateY(-1px);
+  box-shadow:0 8px 24px rgba(0,0,0,0.4);}
+.deep-up:active{transform:translateY(0);}
+/* 第一层没有上一层可回：保留占位（visibility），避免按钮消失导致杯子上下弹跳 */
+.deep-up.gone{opacity:0;pointer-events:none;}
+
+/* ======= 我的酒柜 CABINET ======= */
+#pane-cabinet{position:relative;overflow:hidden;}
+.cab-hd{width:100%;padding:16px 20px 0;flex-shrink:0;}
+.cab-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;}
+.cab-title{font-size:17px;color:var(--text);letter-spacing:0.06em;}
+.cab-count{font-family:'Inter',-apple-system,sans-serif;font-size:10px;
+  letter-spacing:0.16em;color:var(--muted);}
+/* 柜内分区切换 */
+.cab-segs{display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.06);}
+.cab-seg{
+  padding:7px 2px 9px;margin-right:22px;cursor:pointer;position:relative;
+  font-size:12.5px;color:var(--muted);transition:color 0.25s;white-space:nowrap;
+}
+.cab-seg.on{color:var(--gold);}
+.cab-seg.on::after{content:'';position:absolute;bottom:-1px;left:0;right:0;
+  height:1px;background:var(--gold);}
+.cab-seg-n{font-family:'Inter',-apple-system,sans-serif;font-size:9.5px;
+  opacity:0.6;margin-left:4px;}
+
+/* 柜体滚动区 */
+.cab-body{flex:1;width:100%;min-height:0;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;padding:4px 0 30px;}
+
+/* 一层隔板 = 一排酒 + 下方一道木纹线 */
+.shelf{padding:0 18px;margin-bottom:4px;}
+.shelf-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:end;}
+/* 隔板：一道暖金木纹，是"柜子"的视觉支点 */
+.shelf-board{
+  height:9px;margin:0 8px 22px;border-radius:0 0 4px 4px;position:relative;
+  background:linear-gradient(180deg,rgba(201,169,110,0.28),rgba(90,66,32,0.16) 55%,transparent);
+  box-shadow:0 1px 0 rgba(201,169,110,0.22),0 8px 16px -8px rgba(0,0,0,0.85);
+}
+.shelf-board::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(201,169,110,0.55) 15%,
+    rgba(201,169,110,0.55) 85%,transparent);}
+
+/* 一瓶酒 */
+.bottle{
+  position:relative;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;
+  opacity:0;transform:translateY(14px);
+  transition:opacity 0.5s ease,transform 0.5s cubic-bezier(.22,1,.36,1);
+  will-change:transform,opacity;
+}
+.bottle.in{opacity:1;transform:none;}
+.bottle-pic{
+  position:relative;width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;
+  background:radial-gradient(ellipse 70% 55% at 50% 72%,rgba(201,169,110,0.10),rgba(0,0,0,0.34));
+  transition:transform 0.32s cubic-bezier(.22,1,.36,1),box-shadow 0.32s;
+}
+.bottle-pic img{
+  width:100%;height:100%;object-fit:cover;display:block;
+  transition:transform 0.5s cubic-bezier(.22,1,.36,1),filter 0.35s;
+  filter:saturate(0.94) brightness(0.9);
+}
+/* 杯口向上的柔光，让照片像被柜内灯打亮 */
+.bottle-pic::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,240,200,0.07) 0%,transparent 42%,
+    rgba(0,0,0,0.42) 100%);
+}
+.bottle:hover .bottle-pic{transform:translateY(-6px);
+  box-shadow:0 14px 28px -10px rgba(0,0,0,0.9),0 0 0 1px rgba(201,169,110,0.3);}
+.bottle:hover .bottle-pic img{transform:scale(1.06);filter:saturate(1.06) brightness(1);}
+.bottle-name{
+  font-size:11.5px;color:rgba(232,221,208,0.9);margin-top:7px;text-align:center;
+  line-height:1.35;letter-spacing:0.02em;
+}
+.bottle-abv{font-family:'Inter',-apple-system,sans-serif;font-size:9px;
+  color:rgba(201,169,110,0.6);letter-spacing:0.1em;margin-top:2px;}
+/* 珍藏角标 */
+.bottle-star{
+  position:absolute;top:7px;right:7px;font-size:10px;color:var(--gold);
+  width:20px;height:20px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(14,12,8,0.7);border:1px solid rgba(201,169,110,0.45);
+  backdrop-filter:blur(4px);
+}
+
+/* 珍藏的自调酒：没有照片，用生成的酒杯 SVG 顶上 */
+.bottle-gen{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+}
+.bottle-gen svg{width:78%;height:88%;}
+.bottle-glow{
+  position:absolute;left:50%;top:56%;width:74%;height:56%;
+  transform:translate(-50%,-50%);border-radius:50%;
+  filter:blur(22px);opacity:0.45;
+}
+
+/* 空态 */
+.cab-empty{
+  padding:52px 40px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:13px;
+}
+.cab-empty-ico{font-size:40px;opacity:0.32;}
+.cab-empty-t{font-size:14px;color:var(--text);letter-spacing:0.04em;}
+.cab-empty-s{font-size:12px;color:var(--muted);line-height:1.75;max-width:250px;}
+
+/* ======= 酒款详情（从底部升起） ======= */
+.sheet-mask{
+  position:absolute;inset:0;z-index:40;background:rgba(6,5,3,0.72);
+  backdrop-filter:blur(3px);opacity:0;pointer-events:none;
+  transition:opacity 0.36s ease;
+}
+.sheet-mask.on{opacity:1;pointer-events:all;}
+.sheet{
+  position:absolute;left:0;right:0;bottom:0;z-index:41;
+  max-height:88%;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#1d1a12 0%,#141108 100%);
+  border-top:1px solid rgba(201,169,110,0.28);
+  border-radius:22px 22px 0 0;
+  transform:translateY(101%);
+  transition:transform 0.44s cubic-bezier(.22,1,.36,1);
+  box-shadow:0 -18px 44px rgba(0,0,0,0.7);
+}
+.sheet.on{transform:translateY(0);}
+.sheet-grab{width:38px;height:4px;border-radius:99px;background:rgba(255,255,255,0.16);
+  margin:10px auto 0;flex-shrink:0;}
+.sheet-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 22px 26px;}
+.sheet-pic{
+  width:100%;height:190px;border-radius:16px;overflow:hidden;margin-top:14px;
+  position:relative;background:rgba(0,0,0,0.3);
+}
+.sheet-pic img{width:100%;height:100%;object-fit:cover;display:block;}
+.sheet-pic::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,transparent 55%,rgba(20,17,8,0.9) 100%);}
+.sheet-name{font-size:21px;font-weight:700;color:var(--text);margin-top:15px;line-height:1.3;}
+.sheet-en{font-family:'Playfair Display','Georgia',serif;font-style:italic;
+  font-size:12.5px;color:var(--muted);margin-top:3px;}
+.sheet-tagrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px;}
+.sheet-tag{font-size:10px;padding:3px 9px;border-radius:999px;
+  background:rgba(201,169,110,0.09);border:1px solid rgba(201,169,110,0.2);
+  color:rgba(201,169,110,0.9);letter-spacing:0.04em;}
+.sheet-quote{font-size:12.5px;color:var(--muted);font-style:italic;
+  line-height:1.8;margin-top:14px;padding-top:13px;
+  border-top:1px solid rgba(255,255,255,0.055);}
+.sheet-actions{display:flex;gap:9px;margin-top:16px;}
+.sheet-btn{
+  flex:1;padding:12px;border-radius:999px;border:1px solid rgba(255,255,255,0.09);
+  background:transparent;color:var(--muted);font-size:12.5px;cursor:pointer;
+  font-family:'Noto Serif SC','Songti SC',serif;transition:all 0.22s;
+}
+.sheet-btn:hover{color:var(--gold);border-color:rgba(201,169,110,0.42);}
+.sheet-btn.danger:hover{color:#e07a6a;border-color:rgba(224,122,106,0.45);}
+.sheet-btn.solid{background:var(--white-btn);color:var(--white-btn-text);border-color:transparent;}
+.sheet-btn.solid:hover{color:var(--white-btn-text);transform:translateY(-1px);}
+
+/* ======= 珍藏星标按钮 ======= */
+.btn-ico.starred{
+  border-color:var(--gold);
+  background:rgba(201,169,110,0.14);
+  color:var(--gold);
+}
+/* 收藏成功的一下脉冲 */
+@keyframes starPop{
+  0%{transform:scale(1);}
+  38%{transform:scale(1.32);}
+  100%{transform:scale(1);}
+}
+.btn-ico.pop{animation:starPop 0.46s cubic-bezier(.34,1.5,.64,1);}
+/* 星星飞进酒柜的提示 */
+.keep-toast{
+  position:fixed;left:50%;bottom:44px;transform:translateX(-50%) translateY(12px);
+  z-index:200;padding:10px 20px;border-radius:999px;
+  background:rgba(20,17,8,0.94);border:1px solid rgba(201,169,110,0.4);
+  color:var(--gold);font-size:12px;letter-spacing:0.05em;white-space:nowrap;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.3s ease,transform 0.35s cubic-bezier(.22,1,.36,1);
+  box-shadow:0 10px 28px rgba(0,0,0,0.6);
+}
+.keep-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ======= CABINET / MOOD / MUSIC PANES ======= */
+.coming-soon{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;padding:40px;text-align:center;
+}
+.coming-icon{font-size:48px;opacity:0.4;}
+.coming-title{font-size:18px;color:var(--text);letter-spacing:0.05em;}
+.coming-sub{font-size:13px;color:var(--muted);line-height:1.7;max-width:260px;}
+
+/* ======= UTILS ======= */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.fade-up{animation:fadeUp 0.5s ease forwards;}
+.textarea-wrap textarea,.btn-door,.step-txt{font-family:'Noto Serif SC','Songti SC','STSong','SimSun',serif;}
+.res-name-zh,.landing-title,.landing-sub{font-family:'Noto Serif SC','Songti SC','STSong',serif;}
+
+/* ======= 酒卡导出弹窗 ======= */
+/* 离屏画布：只用来生成图片，不参与布局 */
+#card-canvas{position:fixed;left:-99999px;top:0;pointer-events:none;}
+
+.card-modal{
+  position:fixed;inset:0;z-index:200;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity 0.32s ease;
+}
+.card-modal.on{opacity:1;pointer-events:all;}
+.card-modal-mask{
+  position:absolute;inset:0;
+  background:rgba(6,5,3,0.86);backdrop-filter:blur(6px);
+}
+.card-modal-inner{
+  position:relative;z-index:1;
+  width:100%;max-width:400px;padding:0 20px;
+  display:flex;flex-direction:column;align-items:center;
+  transform:translateY(16px) scale(0.97);
+  transition:transform 0.4s cubic-bezier(.22,1,.36,1);
+}
+.card-modal.on .card-modal-inner{transform:translateY(0) scale(1);}
+.card-modal-hd{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:12px;
+}
+.card-modal-title{
+  font-size:13px;letter-spacing:0.18em;color:var(--gold);
+  font-family:'Noto Serif SC',serif;
+}
+.card-modal-close{
+  color:var(--muted);cursor:pointer;font-size:16px;
+  width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;transition:all 0.25s;
+}
+.card-modal-close:hover{color:var(--text);background:rgba(255,255,255,0.06);}
+/* 预览图：金边 + 外发光，像一张实体卡 */
+.card-preview-wrap{
+  width:100%;border-radius:16px;overflow:hidden;
+  border:1px solid rgba(201,169,110,0.28);
+  box-shadow:0 22px 60px rgba(0,0,0,0.7),0 0 40px rgba(201,169,110,0.09);
+  max-height:62vh;
+}
+.card-preview{display:block;width:100%;height:auto;}
+.card-modal-acts{
+  width:100%;display:flex;gap:10px;margin-top:18px;
+}
+.card-btn{
+  flex:1;border-radius:50px;padding:13px 0;
+  font-size:14px;font-family:'Noto Serif SC',serif;letter-spacing:0.06em;
+  cursor:pointer;transition:all 0.25s;border:1px solid transparent;
+}
+.card-btn.solid{background:var(--white-btn);color:var(--white-btn-text);}
+.card-btn.solid:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,0.45);}
+.card-btn.ghost{
+  background:transparent;color:var(--gold);
+  border-color:rgba(201,169,110,0.45);
+}
+.card-btn.ghost:hover{border-color:var(--gold);background:var(--gold-dim);}
+.card-modal-tip{
+  margin-top:12px;font-size:11px;color:rgba(107,98,85,0.8);letter-spacing:0.08em;
+  transition:color 0.3s;
+}
+.card-modal-tip.ok{color:var(--gold);}

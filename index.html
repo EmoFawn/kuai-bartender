@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>苦艾</title>
+<!-- 字体：优先系统本地字体，避免 Google Fonts 网络问题 -->
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ===== LANDING ===== -->
+<div id="landing" class="page active">
+  <div class="landing-bg"></div>
+  <div class="landing-dust" id="landing-dust"></div>
+  <div style="position:relative;text-align:center;">
+    <div class="landing-deco">
+      <div class="deco-line"></div>
+      <div class="deco-diamond"></div>
+      <div class="deco-line"></div>
+    </div>
+    <div class="landing-title">
+      <span class="ch-unit">
+        <span class="py py-ku">ku</span>
+        <span class="ch">苦</span>
+      </span>
+      <span class="ch-unit">
+        <span class="py py-ai">AI</span>
+        <span class="ch">艾</span>
+      </span>
+    </div>
+    <div class="landing-en">Kuai | CoolAI</div>
+    <div class="landing-sub">万物皆可入酒，情绪也是。</div>
+    <button class="btn-door" id="btn-door">推 门</button>
+  </div>
+  <div class="landing-footer">情绪调酒馆 · 只属于今晚</div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="app" class="page">
+  <!-- tabs -->
+  <div class="tabs" id="tabs" style="max-width:480px;width:100%;">
+    <div class="tab" data-tab="cabinet">我的酒柜</div>
+    <div class="tab active" data-tab="chat">对话调酒</div>
+    <div class="tab" data-tab="mood">心情调酒</div>
+    <div class="tab" data-tab="music">音乐调酒</div>
+  </div>
+
+  <!-- pane: 我的酒柜 -->
+  <div class="pane" id="pane-cabinet" style="flex:1;width:100%;max-width:480px;">
+    <div class="cab-hd">
+      <div class="cab-top">
+        <div class="cab-title">我的酒柜</div>
+        <div class="cab-count" id="cab-count">—</div>
+      </div>
+      <div class="cab-segs">
+        <div class="cab-seg on" data-seg="kept">我的珍藏<span class="cab-seg-n" id="seg-n-kept">0</span></div>
+        <div class="cab-seg" data-seg="classic">经典酒谱<span class="cab-seg-n" id="seg-n-classic">0</span></div>
+      </div>
+    </div>
+    <div class="cab-body" id="cab-body"></div>
+
+    <!-- 酒款详情 -->
+    <div class="sheet-mask" id="sheet-mask"></div>
+    <div class="sheet" id="sheet">
+      <div class="sheet-grab"></div>
+      <div class="sheet-scroll" id="sheet-scroll"></div>
+    </div>
+  </div>
+
+  <!-- pane: 对话调酒 -->
+  <div class="pane active" id="pane-chat" style="flex:1;width:100%;max-width:480px;position:relative;">
+    <!-- sub: input -->
+    <div class="sub active" id="sub-input">
+      <div class="circle-wrap">
+        <svg class="circle-svg" viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="92" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+          <circle cx="100" cy="100" r="84" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="7"/>
+        </svg>
+        <div class="liq-container">
+          <div class="liq-body" id="liq-body" style="height:16%;background:#4a5a48;">
+            <div class="liq-wave"></div>
+          </div>
+        </div>
+        <div class="circle-hint" id="circle-hint">Waiting for input...</div>
+      </div>
+      <div class="input-area">
+        <div class="textarea-wrap">
+          <textarea id="mood-input" maxlength="50" rows="3"
+            placeholder="告诉我，你现在感觉如何？&#10;"有点累，想要一杯深沉的酒…""></textarea>
+          <div class="char-row">
+            <span class="char-count" id="char-cnt">0 / 50</span>
+            <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="btn-wrap">
+        <button class="btn-main" id="btn-mix">
+          <span>✦</span><span id="btn-mix-txt">随机生成 / Random Mix</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- sub: mixing -->
+    <div class="sub" id="sub-mixing">
+      <div class="circle-wrap" style="margin-top:60px;">
+        <svg class="circle-svg" viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="92" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+        </svg>
+        <div class="liq-container">
+          <div class="liq-body" id="mix-liq" style="height:0%;background:#5a6a55;">
+            <div class="liq-wave"></div>
+          </div>
+        </div>
+        <div class="mix-hint" id="mix-hint">Mixing...</div>
+      </div>
+      <div class="mix-steps" id="mix-steps"></div>
+    </div>
+
+    <!-- sub: result -->
+    <div class="sub" id="sub-result" style="padding-bottom:36px;">
+      <div style="width:100%;max-width:432px;padding:12px 14px 0;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <span id="btn-back" style="color:var(--muted);cursor:pointer;font-size:20px;">←</span>
+        <span style="font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.2em;color:var(--muted);">MOOD MIXOLOGY</span>
+        <span id="btn-save" style="color:var(--muted);cursor:pointer;font-size:20px;">↓</span>
+      </div>
+      <div class="res-card fade-up">
+        <div class="res-hd">
+          <div class="res-label">YOUR EXCLUSIVE BLEND</div>
+          <div class="res-name-zh" id="r-name-zh">—</div>
+          <div class="res-name-en" id="r-name-en">—</div>
+        </div>
+        <div class="glass-vis">
+          <div class="glass-glow" id="r-glow"></div>
+          <svg class="glass-svg" id="r-glass" viewBox="0 0 150 180"></svg>
+        </div>
+        <div class="res-info">
+          <div class="info-row"><span class="info-lbl">基酒 Base</span><span class="info-val" id="r-base">—</span></div>
+          <div class="notes-row">
+            <div class="note-col"><div class="note-lbl">Top</div><div class="note-val" id="r-top">—</div></div>
+            <div class="note-col"><div class="note-lbl">Mid</div><div class="note-val" id="r-mid">—</div></div>
+            <div class="note-col"><div class="note-lbl">Base</div><div class="note-val" id="r-base-note">—</div></div>
+          </div>
+          <div class="str-row">
+            <div class="info-row" style="border:none;padding:0 0 3px;">
+              <span class="info-lbl">酒精度 ABV</span><span class="info-val" id="r-pct">—</span>
+            </div>
+            <div class="str-track"><div class="str-fill" id="r-bar" style="width:0%"></div></div>
+          </div>
+        </div>
+        <div class="res-quote">
+          <div class="reading-row" id="r-reading-row" style="display:none;">
+            <span class="reading-lbl">我读到的</span>
+            <span class="reading-txt" id="r-reading"></span>
+          </div>
+          <div class="quote-txt" id="r-comment">—</div>
+          <div class="mode-badge" id="r-mode"></div>
+        </div>
+      </div>
+      <div class="res-actions">
+        <button class="btn-sec" id="btn-remix">↺ 再调一杯</button>
+        <div class="btn-ico" id="btn-keep" title="珍藏进酒柜">✦</div>
+      </div>
+      <!-- 调酒师卡片（替代 ALSO TRY） -->
+      <div class="bar-card loading" id="chat-bar-card">
+        <div class="bar-card-tag" id="chat-card-tag">—</div>
+        <div class="bar-card-headline" id="chat-card-headline">苦，但不后悔</div>
+        <div class="bar-card-body" id="chat-card-body">有些决定不需要解释，这杯也是。先把今晚交给它。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- pane: 心情调酒 -->
+  <div class="pane" id="pane-mood" style="flex:1;width:100%;max-width:480px;position:relative;">
+    <!-- 右上角 DEEP 开关 -->
+    <div class="deep-toggle" id="deep-toggle" title="纵向探究心情">
+      <span class="deep-lbl">DEEP</span>
+      <span class="deep-switch"></span>
+    </div>
+
+    <!-- sub: 气泡选择 -->
+    <div class="sub active" id="mood-sub-pick">
+      <div class="mood-hd">
+        <div class="mood-title">今晚是什么心情？</div>
+        <div class="mood-tip">把气泡拖进杯里 · 最多 3 个</div>
+      </div>
+
+      <!-- 气泡池 -->
+      <div class="bubble-field" id="bubble-field"></div>
+
+      <!-- 接收气泡的酒杯 -->
+      <div class="shaker-zone" id="shaker-zone">
+        <svg class="shaker-svg" viewBox="0 0 160 150">
+          <defs>
+            <linearGradient id="mixLiq" x1="0" y1="0" x2="0.3" y2="1">
+              <stop id="mixC1" offset="0%" stop-color="#3a4560" stop-opacity="0.9"/>
+              <stop id="mixC2" offset="100%" stop-color="#2a3450" stop-opacity="1"/>
+            </linearGradient>
+            <linearGradient id="mixGls" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="rgba(255,255,255,0.2)"/>
+              <stop offset="20%" stop-color="rgba(255,255,255,0.04)"/>
+              <stop offset="80%" stop-color="rgba(255,255,255,0.04)"/>
+              <stop offset="100%" stop-color="rgba(255,255,255,0.16)"/>
+            </linearGradient>
+            <clipPath id="mixClip">
+              <path d="M38 26 L122 26 L114 128 C114 133 109 136 104 136 L56 136 C51 136 46 133 46 128 Z"/>
+            </clipPath>
+          </defs>
+          <!-- 杯身 -->
+          <path d="M38 26 L122 26 L114 128 C114 133 109 136 104 136 L56 136 C51 136 46 133 46 128 Z"
+                fill="url(#mixGls)"/>
+          <!-- 液体 -->
+          <g clip-path="url(#mixClip)">
+            <rect id="mix-liquid" x="30" y="140" width="100" height="0" fill="url(#mixLiq)"/>
+            <ellipse id="mix-surface" cx="80" cy="140" rx="0" ry="4" fill="rgba(255,255,255,0.2)"/>
+            <ellipse cx="56" cy="70" rx="4" ry="26" fill="rgba(255,255,255,0.12)"/>
+          </g>
+          <!-- 描边 -->
+          <path d="M38 26 L122 26 L114 128 C114 133 109 136 104 136 L56 136 C51 136 46 133 46 128 Z"
+                fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M38 26 L122 26" stroke="rgba(255,255,255,0.7)" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <div class="shaker-hint" id="shaker-hint">拖到这里</div>
+        <!-- 已投入的心情标签 -->
+        <div class="picked-list" id="picked-list"></div>
+      </div>
+
+      <div class="btn-wrap" style="margin-top:auto;">
+        <button class="btn-main" id="btn-mood-mix" disabled>
+          <span>✦</span><span id="btn-mood-txt">先选一个心情</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- sub: DEEP 纵向探究（同样用气泡拖拽，只是一层层往下问） -->
+    <div class="sub" id="mood-sub-deep">
+      <div class="deep-hd">
+        <div class="deep-step" id="deep-step">第 1 层 / 3</div>
+        <div class="deep-q" id="deep-q">今晚大概是什么心情？</div>
+      </div>
+
+      <!-- 已选路径 -->
+      <div class="deep-trail" id="deep-trail"></div>
+
+      <!-- 本层气泡池 -->
+      <div id="deep-field"></div>
+
+      <!-- 同一只杯子，接收本层拖入的气泡 -->
+      <div class="shaker-zone" id="deep-shaker">
+        <svg class="shaker-svg" viewBox="0 0 160 150">
+          <defs>
+            <linearGradient id="dpLiq" x1="0" y1="0" x2="0.3" y2="1">
+              <stop id="dpC1" offset="0%" stop-color="#3a4560" stop-opacity="0.9"/>
+              <stop id="dpC2" offset="100%" stop-color="#2a3450" stop-opacity="1"/>
+            </linearGradient>
+            <clipPath id="dpClip">
+              <path d="M38 26 L122 26 L114 128 C114 133 109 136 104 136 L56 136 C51 136 46 133 46 128 Z"/>
+            </clipPath>
+          </defs>
+          <path d="M38 26 L122 26 L114 128 C114 133 109 136 104 136 L56 136 C51 136 46 133 46 128 Z"
+                fill="url(#mixGls)"/>
+          <g clip-path="url(#dpClip)">
+            <rect id="dp-liquid" x="30" y="140" width="100" height="0" fill="url(#dpLiq)"
+                  style="transition:all 0.7s cubic-bezier(.4,0,.2,1);"/>
+            <ellipse id="dp-surface" cx="80" cy="140" rx="0" ry="4" fill="rgba(255,255,255,0.2)"
+                  style="transition:all 0.7s cubic-bezier(.4,0,.2,1);"/>
+            <ellipse cx="56" cy="70" rx="4" ry="26" fill="rgba(255,255,255,0.12)"/>
+          </g>
+          <path d="M38 26 L122 26 L114 128 C114 133 109 136 104 136 L56 136 C51 136 46 133 46 128 Z"
+                fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M38 26 L122 26" stroke="rgba(255,255,255,0.7)" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <div class="shaker-hint" id="deep-hint">拖一个进来</div>
+      </div>
+
+      <div class="deep-foot">
+        <button class="deep-up gone" id="deep-up">↑ 回上一层</button>
+      </div>
+    </div>
+
+    <!-- sub: 调制中 -->
+    <div class="sub" id="mood-sub-mixing">
+      <div class="circle-wrap" style="margin-top:60px;">
+        <svg class="circle-svg" viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="92" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+        </svg>
+        <div class="liq-container">
+          <div class="liq-body" id="mood-mix-liq" style="height:0%;background:#5a6a55;">
+            <div class="liq-wave"></div>
+          </div>
+        </div>
+        <div class="mix-hint">Blending...</div>
+      </div>
+      <div class="mix-steps" id="mood-mix-steps"></div>
+    </div>
+
+    <!-- sub: 结果（复用结果卡样式） -->
+    <div class="sub" id="mood-sub-result" style="padding-bottom:36px;">
+      <div style="width:100%;max-width:432px;padding:12px 14px 0;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <span id="mood-back" style="color:var(--muted);cursor:pointer;font-size:20px;">←</span>
+        <span style="font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.2em;color:var(--muted);">MOOD BLEND</span>
+        <span id="mood-save" style="color:var(--muted);cursor:pointer;font-size:20px;">↓</span>
+      </div>
+      <div class="res-card fade-up">
+        <div class="res-hd">
+          <div class="res-label">YOUR MOOD BLEND</div>
+          <div class="res-name-zh" id="m-name-zh">—</div>
+          <div class="res-name-en" id="m-name-en">—</div>
+        </div>
+        <div class="glass-vis">
+          <div class="glass-glow" id="m-glow"></div>
+          <svg class="glass-svg" id="m-glass" viewBox="0 0 150 180"></svg>
+        </div>
+        <div class="res-info">
+          <div class="info-row"><span class="info-lbl">心情配比 Blend</span><span class="info-val" id="m-blend">—</span></div>
+          <div class="info-row"><span class="info-lbl">基酒 Base</span><span class="info-val" id="m-base">—</span></div>
+          <div class="notes-row">
+            <div class="note-col"><div class="note-lbl">Top</div><div class="note-val" id="m-top">—</div></div>
+            <div class="note-col"><div class="note-lbl">Mid</div><div class="note-val" id="m-mid">—</div></div>
+            <div class="note-col"><div class="note-lbl">Base</div><div class="note-val" id="m-base-note">—</div></div>
+          </div>
+          <div class="str-row">
+            <div class="info-row" style="border:none;padding:0 0 3px;">
+              <span class="info-lbl">酒精度 ABV</span><span class="info-val" id="m-pct">—</span>
+            </div>
+            <div class="str-track"><div class="str-fill" id="m-bar" style="width:0%"></div></div>
+          </div>
+        </div>
+        <div class="res-quote">
+          <div class="quote-txt" id="m-comment">—</div>
+          <div class="mode-badge" id="m-mode"></div>
+        </div>
+      </div>
+      <div class="res-actions">
+        <button class="btn-sec" id="mood-remix">↺ 重新选心情</button>
+        <div class="btn-ico" id="mood-keep" title="珍藏进酒柜">✦</div>
+      </div>
+      <!-- 调酒师卡片 -->
+      <div class="bar-card loading" id="mood-bar-card">
+        <div class="bar-card-tag" id="mood-card-tag">—</div>
+        <div class="bar-card-headline" id="mood-card-headline">—</div>
+        <div class="bar-card-body" id="mood-card-body">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- pane: 音乐调酒 -->
+  <div class="pane" id="pane-music" style="flex:1;width:100%;max-width:480px;">
+    <div class="coming-soon">
+      <div class="coming-icon">🎵</div>
+      <div class="coming-title">音乐调酒</div>
+      <div class="coming-sub">哼一段旋律，或者告诉我你在听什么，我来调一杯同频的酒。</div>
+    </div>
+  </div>
+</div>
+
+<canvas id="card-canvas" width="750" height="1180"></canvas>
+
+<!-- ===== 卡片预览弹窗：点↓后先看到成品，再决定保存 ===== -->
+<div class="card-modal" id="card-modal">
+  <div class="card-modal-mask" id="card-modal-mask"></div>
+  <div class="card-modal-inner">
+    <div class="card-modal-hd">
+      <span class="card-modal-title">你今夜的酒</span>
+      <span class="card-modal-close" id="card-close">✕</span>
+    </div>
+    <div class="card-preview-wrap">
+      <img class="card-preview" id="card-preview" alt="酒卡预览">
+    </div>
+    <div class="card-modal-acts">
+      <button class="card-btn ghost" id="card-copy">复制图片</button>
+      <button class="card-btn solid" id="card-download">保存到相册</button>
+    </div>
+    <div class="card-modal-tip" id="card-tip">长按图片也可保存</div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/mood.js"></script>
+<script src="js/deep.js"></script>
+<script src="js/cabinet.js"></script>
+<script src="js/export.js"></script>
+</body>
+</html>

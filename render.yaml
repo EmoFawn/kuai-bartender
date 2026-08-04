@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: kuai-bartender
+    runtime: node
+    plan: free
+    buildCommand: echo "零依赖，无需构建"
+    startCommand: node server.js
+    envVars:
+      - key: LLM_BASE_URL
+        value: https://api.deepseek.com/v1
+      - key: LLM_MODEL
+        value: deepseek-chat
+      # LLM_API_KEY 不写在这里，去 Render 后台 Environment 面板手动添加（保密）
+      - key: LLM_API_KEY
+        sync: false
