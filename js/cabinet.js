@@ -84,15 +84,21 @@ const CLASSIC_BAR=[
    原 酒柜/*.png 是 1760×2336 的母版，单张 1~4MB、35 张共 64MB。
    移动端切进「我的酒柜」要一次性拉 35 张原图，首屏直接卡住数秒。
    现改为：
-     列表(110px 显示) → 酒柜/thumbs/*.jpg  480px 宽，共 616KB
-     详情(380px 显示) → 酒柜/mid/*.jpg     900px 宽，共 1.9MB
+     列表(110px 显示) → 酒柜/thumbs/*.png  480px 宽，共 3.3MB
+     详情(380px 显示) → 酒柜/mid/*.png     900px 宽，共 11MB（按需加载）
      原 PNG 作为母版保留，不再由前端加载。
+
+   ⚠️ 缩略图必须是 PNG，不能用 JPEG：
+   母版是抠图，酒杯外的背景是透明的，靠 .bottle-pic 的深色渐变透上来。
+   JPEG 不支持 alpha，转换时透明区会被压成纯白 → 酒柜变成一格格白底方块。
+   PNG 保留 alpha，480px 单张约 140KB，相比原图仍是 16 倍提升。
+
    缩略图由 scripts/optimize-images.sh 生成（macOS sips，零依赖）。
    若缩略图缺失，onerror 会自动回退到原 PNG，不会出现空图。 */
 CLASSIC_BAR.forEach(c=>{
   c.img      = '酒柜/'+c.zh+'.png';          // 母版（兜底）
-  c.imgThumb = '酒柜/thumbs/'+c.zh+'.jpg';   // 列表
-  c.imgMid   = '酒柜/mid/'+c.zh+'.jpg';      // 详情
+  c.imgThumb = '酒柜/thumbs/'+c.zh+'.png';   // 列表
+  c.imgMid   = '酒柜/mid/'+c.zh+'.png';      // 详情
   c.kind     = 'classic';
 });
 

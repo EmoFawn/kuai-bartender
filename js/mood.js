@@ -86,12 +86,39 @@ const shakerHint=document.getElementById('shaker-hint');
    在 iPhone SE 这类矮屏上，池子 + 酒杯 + 按钮总高超出视口，
    最后一行气泡和「开始调制」按钮会被裁掉（看不见也点不到）。
    这里按视口高度算一个统一缩放系数，池高与气泡直径一起等比缩小 ——
-   只压池高不压气泡的话，气泡会互相重叠糊成一团。 */
-function moodScale(){
+   只压池高不压气泡的话，气泡会互相重叠糊成一团。
+
+   [BUGFIX·气泡突然变小] 这个系数必须"锁住"，不能每次渲染都实时读 innerHeight。
+   原因：移动端浏览器地址栏会随滚动收起/展开，innerHeight 随之跳变 60~100px。
+   之前 moodScale() 每次都实时计算，于是：
+     · 地址栏一收起 → resize 事件 → 重排 → 气泡整体缩放一档；
+     · DEEP 每翻一层都会 renderDeepLayer() 重新读一次 innerHeight，
+       只要中间地址栏状态变了，下一层气泡就会突然大一圈或小一圈。
+   这就是"DEEP 模式图标会突然变小，很诡异"的根因。
+   现在：进页面时算一次并缓存；只有真正的横竖屏切换（宽度也变了）
+   才重新计算 —— 地址栏伸缩只改高度不改宽度，因此不会再触发缩放。 */
+let _moodScale=null;       // 缓存的缩放系数
+let _moodScaleW=0;         // 计算这个系数时的视口宽度
+
+function computeMoodScale(){
   const h=window.innerHeight||800;
   // 设计基准：视口 880px 时 = 1.0；越矮越小，最低 0.62 保证还能点得中
   const s=(h-300)/580;
   return Math.max(0.62,Math.min(1,s));
+}
+function moodScale(){
+  if(_moodScale===null){
+    _moodScale=computeMoodScale();
+    _moodScaleW=window.innerWidth;
+  }
+  return _moodScale;
+}
+/* 仅在宽度变化（= 真的转屏/改窗口）时才允许刷新系数 */
+function refreshMoodScaleIfNeeded(){
+  if(window.innerWidth===_moodScaleW)return false;
+  _moodScale=computeMoodScale();
+  _moodScaleW=window.innerWidth;
+  return true;
 }
 /* 气泡池实际高度（DEEP 池要减去 .deep-trail 那一行，保持两模式杯子落点一致） */
 function moodFieldH(base){return Math.round(base*moodScale());}
@@ -127,15 +154,17 @@ function layoutBubbles(){
   });
 }
 
-/* 旋转屏幕 / 收起键盘 / 浏览器地址条伸缩后，重新按新视口铺一遍。
-   只在高度变化超过阈值时才重排，避免 iOS 地址条微抖动导致气泡乱跳。 */
-let _moodVH=window.innerHeight;
+/* 只在「真的转屏 / 改窗口大小」时重排气泡池。
+   [BUGFIX·气泡突然变小] 之前这里用「高度变化 > 60px」当触发条件，
+   但移动端地址栏收起/展开正好就是 60~100px 的高度跳变 ——
+   于是用户只要滚一下页面，气泡就会整体缩放一档，观感非常诡异。
+   现在改用「宽度变化」判定：地址栏伸缩只改高度不改宽度，
+   而横竖屏切换宽高都变，正好能区分这两种情况。 */
 let _moodRelayoutT=null;
 function scheduleMoodRelayout(){
   clearTimeout(_moodRelayoutT);
   _moodRelayoutT=setTimeout(()=>{
-    if(Math.abs(window.innerHeight-_moodVH)<60)return;
-    _moodVH=window.innerHeight;
+    if(!refreshMoodScaleIfNeeded())return;   // 宽度没变 → 不是转屏，不动
     killGhost();
     layoutBubbles();
     syncShaker();
