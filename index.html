@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>苦艾</title>
 <!-- 字体：优先系统本地字体，避免 Google Fonts 网络问题 -->
 <link rel="stylesheet" href="css/styles.css">
@@ -43,7 +43,8 @@
     <div class="tab" data-tab="cabinet">我的酒柜</div>
     <div class="tab active" data-tab="chat">对话调酒</div>
     <div class="tab" data-tab="mood">心情调酒</div>
-    <div class="tab" data-tab="music">音乐调酒</div>
+    <!-- 音乐调酒：功能未开发，前端入口暂时下线（保留代码，勿删） -->
+    <!-- <div class="tab" data-tab="music">音乐调酒</div> -->
   </div>
 
   <!-- pane: 我的酒柜 -->
@@ -344,7 +345,7 @@
     </div>
   </div>
 
-  <!-- pane: 音乐调酒 -->
+  <!-- pane: 音乐调酒（入口已下线，容器保留但不渲染，方便后续恢复）
   <div class="pane" id="pane-music" style="flex:1;width:100%;max-width:480px;">
     <div class="coming-soon">
       <div class="coming-icon">🎵</div>
@@ -352,6 +353,7 @@
       <div class="coming-sub">哼一段旋律，或者告诉我你在听什么，我来调一杯同频的酒。</div>
     </div>
   </div>
+  -->
 </div>
 
 <canvas id="card-canvas" width="750" height="1180"></canvas>

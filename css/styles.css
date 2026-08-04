@@ -7,6 +7,9 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;background:var(--bg);}
+/* [移动端] iOS/Android 地址条伸缩时 100vh 会大于可见区域，
+   导致底部按钮/内容被浏览器 UI 遮住。支持 dvh 时改用动态视口高。 */
+@supports (height:100dvh){html,body{height:100dvh;}}
 body{font-family:'Noto Serif SC','Songti SC','STSong','SimSun',serif;color:var(--text);}
 
 /* ======= 滚动条（默认的白色滚动条在深色酒馆里非常突兀）=======
@@ -26,8 +29,10 @@ body{font-family:'Noto Serif SC','Songti SC','STSong','SimSun',serif;color:var(-
 /* 用 .hidden 类彻底移出渲染树，避免子元素（如 .sub.active）
    用 visibility:visible / pointer-events:all 覆盖父级隐藏状态、
    造成"隐形却可命中"的遮挡层挡住落地页按钮 */
-.page{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+.page{position:fixed;left:0;top:0;right:0;bottom:0;height:100%;
+  display:flex;flex-direction:column;align-items:center;
   opacity:0;pointer-events:none;transition:opacity 0.7s ease;overflow:hidden;}
+@supports (height:100dvh){.page{height:100dvh;}}
 .page.active{opacity:1;pointer-events:all;}
 .page.hidden{display:none !important;}
 
@@ -224,9 +229,14 @@ body{font-family:'Noto Serif SC','Songti SC','STSong','SimSun',serif;color:var(-
 #pane-chat{position:relative;}
 
 /* sub-screens inside pane */
+/* [移动端] 内容超出时必须能滚动，否则底部按钮直接被裁掉。
+   overscroll-behavior 防止滚到头/尾时带动整页橡皮筋。 */
 .sub{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
   opacity:0;pointer-events:none;visibility:hidden;
-  transition:opacity 0.45s ease,visibility 0.45s ease;overflow-y:auto;}
+  transition:opacity 0.45s ease,visibility 0.45s ease;
+  overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  padding-bottom:env(safe-area-inset-bottom);}
 .sub.active{opacity:1;pointer-events:all;visibility:visible;}
 
 /* input sub */
@@ -527,7 +537,9 @@ textarea::placeholder{color:var(--muted);}
 }
 
 /* ======= DEEP 纵向探究 ======= */
-#mood-sub-deep{overflow:hidden;}
+/* [移动端] 之前这里是 overflow:hidden，矮屏上 DEEP 的气泡池+酒杯+底部按钮
+   总高超过可见区域时就直接被裁掉且无法滚动。改为继承 .sub 的可滚动。 */
+#mood-sub-deep{overflow-y:auto;overflow-x:hidden;}
 /* padding 与 .mood-hd 对齐（18px 20px 6px），保证两个模式头部高度一致 */
 .deep-hd{width:100%;text-align:center;padding:18px 62px 6px;flex-shrink:0;}
 .deep-step{
@@ -564,8 +576,14 @@ textarea::placeholder{color:var(--muted);}
   height:281px;flex-shrink:0;margin:2px auto 0;
 }
 /* 进/出场：不碰 transform（transform 归 bubFloat 动画），只动 opacity 与 --bs */
-.bubble.b-in{animation:bubIn 0.46s cubic-bezier(.22,1,.36,1) forwards,
-                       bubFloat 5s ease-in-out infinite;}
+/* [BUGFIX·闪烁] bubIn 带 animation-delay（逐个错峰入场）。
+   若 fill-mode 只写 forwards，delay 期间元素维持 CSS 默认状态（opacity:1），
+   等 delay 结束才被 keyframe 的 from{opacity:0} 拽回去 —— 视觉上就是
+   「先整屏亮一下，再一个个淡入」的闪烁。
+   解决：基础态显式 opacity:0，并把 fill-mode 改成 both（前后都填充）。 */
+.bubble.b-in{opacity:0;--bs:0.4;
+  animation:bubIn 0.46s cubic-bezier(.22,1,.36,1) both,
+            bubFloat 5s ease-in-out infinite;}
 @keyframes bubIn{
   from{opacity:0;--bs:0.4;}
   to{opacity:1;--bs:1;}
@@ -847,3 +865,102 @@ textarea::placeholder{color:var(--muted);}
   transition:color 0.3s;
 }
 .card-modal-tip.ok{color:var(--gold);}
+
+/* ==========================================================
+   移动端适配
+   ----------------------------------------------------------
+   [根因] 原布局大量使用固定 px 高度（气泡池 310 / DEEP 池 281 /
+   酒杯区 160 / 圆形液体 200），矮屏上这些高度累加超过视口，
+   而 .sub 当时又是不可滚动的 → 底部「开始调制」按钮和最后一行
+   气泡被直接裁掉，用户完全看不到也点不到。
+   [对策]
+     ① .sub / #mood-sub-deep 改为可滚动（见上文），兜底永不丢内容；
+     ② 气泡池高度与气泡直径改由 JS 按视口高度等比缩放（见 mood.js
+        的 moodScale()），避免"压高度不压气泡"导致重叠；
+     ③ 这里再用媒体查询压缩其余固定尺寸与留白；
+     ④ 触屏关掉 hover 态，避免点完高亮粘住；
+     ⑤ 底部统一预留 safe-area，防被 iPhone 手势条盖住。
+   ========================================================== */
+
+/* ---- 触屏：hover 会"粘住"，统一关掉 ---- */
+@media (hover:none){
+  .bubble:hover{--bs:1;box-shadow:none;}
+  .btn-main:hover,.btn-sec:hover,.deep-up:hover,.btn-door:hover,
+  .sheet-btn.solid:hover,.card-btn.solid:hover{transform:none;box-shadow:none;}
+  .bottle:hover .bottle-pic{transform:none;box-shadow:none;}
+  .bottle:hover .bottle-pic img{transform:none;filter:saturate(0.94) brightness(0.9);}
+  .deep-up:hover{background:transparent;color:var(--gold);}
+}
+
+/* ---- 安全区：iPhone 底部手势条 / 刘海 ---- */
+.btn-wrap,.deep-foot{padding-bottom:calc(24px + env(safe-area-inset-bottom));}
+.cab-body{padding-bottom:calc(30px + env(safe-area-inset-bottom));}
+.sheet-scroll{padding-bottom:calc(26px + env(safe-area-inset-bottom));}
+.tabs{padding-top:calc(16px + env(safe-area-inset-top));}
+.landing-footer{bottom:calc(28px + env(safe-area-inset-bottom));}
+.keep-toast{bottom:calc(44px + env(safe-area-inset-bottom));}
+
+/* ---- 窄屏：标题 / tab / 卡片留白收一收 ---- */
+@media (max-width:400px){
+  .landing-title{font-size:56px;}
+  .landing-en{font-size:12px;letter-spacing:0.24em;}
+  .landing-sub{font-size:13px;margin-bottom:40px;}
+  .tabs{padding-left:10px;padding-right:10px;}
+  .tab{font-size:11.5px;letter-spacing:0;}
+  .res-hd{padding:20px 18px 0;}
+  .res-name-zh{font-size:21px;}
+  .res-info{padding:0 16px 8px;}
+  .note-val{font-size:12px;}
+  .bar-card{padding:16px 16px 14px;}
+  .bar-card-headline{font-size:16px;padding-right:58px;}
+  .bar-card-body{font-size:12.5px;line-height:1.75;}
+  .deep-hd{padding-left:56px;padding-right:56px;}
+  .cab-hd{padding-left:14px;padding-right:14px;}
+  .shelf{padding:0 12px;}
+  .shelf-row{gap:8px;}
+  .bottle-name{font-size:11px;}
+}
+@media (max-width:340px){
+  .landing-title{font-size:46px;}
+  .tab{font-size:10.5px;}
+}
+
+/* ---- 矮屏（iPhone SE / 小折叠）：压缩纵向固定尺寸 ---- */
+@media (max-height:760px){
+  .mood-hd,.deep-hd{padding-top:12px;padding-bottom:4px;}
+  .btn-wrap,.deep-foot{padding-top:12px;
+    padding-bottom:calc(16px + env(safe-area-inset-bottom));}
+  .circle-wrap{width:170px;height:170px;margin-top:18px;}
+  .liq-container{width:143px;height:143px;top:13px;left:13px;}
+  .input-area{margin-top:46px;}
+  #sub-mixing .circle-wrap,#mood-sub-mixing .circle-wrap{margin-top:40px !important;}
+  .mix-steps{padding-top:44px;}
+  .landing-title{font-size:56px;}
+  .landing-sub{margin-bottom:36px;}
+}
+@media (max-height:670px){
+  .mood-title,.deep-q{font-size:15px;}
+  .mood-tip{font-size:10.5px;}
+  .circle-wrap{width:150px;height:150px;margin-top:12px;}
+  .liq-container{width:126px;height:126px;top:12px;left:12px;}
+  .input-area{margin-top:34px;}
+  textarea{min-height:58px;font-size:14px;}
+  .btn-main{padding:13px 20px;}
+  .landing-title{font-size:48px;}
+  .landing-sub{margin-bottom:28px;}
+  .landing-deco{margin-bottom:18px;}
+}
+
+/* ---- 横屏 / 极矮：直接放弃"一屏装完"，改为纵向滚动流 ---- */
+@media (max-height:560px) and (orientation:landscape){
+  .circle-wrap{margin-top:12px;}
+  .input-area{margin-top:22px;}
+  .btn-wrap,.deep-foot{margin-top:12px !important;}
+}
+
+/* ---- 详情卡：矮屏上给足高度，别让按钮被挤出去 ---- */
+@media (max-height:700px){
+  .sheet{max-height:92%;}
+  .sheet-pic{height:150px;}
+  .card-preview-wrap{max-height:52vh;}
+}

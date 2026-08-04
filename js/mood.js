@@ -82,8 +82,24 @@ const btnMoodTxt=document.getElementById('btn-mood-txt');
 const shakerHint=document.getElementById('shaker-hint');
 
 /* ---- 渲染气泡池 ---- */
+/* [移动端适配] 气泡池原本是固定 310px 高 + 固定 px 直径的气泡。
+   在 iPhone SE 这类矮屏上，池子 + 酒杯 + 按钮总高超出视口，
+   最后一行气泡和「开始调制」按钮会被裁掉（看不见也点不到）。
+   这里按视口高度算一个统一缩放系数，池高与气泡直径一起等比缩小 ——
+   只压池高不压气泡的话，气泡会互相重叠糊成一团。 */
+function moodScale(){
+  const h=window.innerHeight||800;
+  // 设计基准：视口 880px 时 = 1.0；越矮越小，最低 0.62 保证还能点得中
+  const s=(h-300)/580;
+  return Math.max(0.62,Math.min(1,s));
+}
+/* 气泡池实际高度（DEEP 池要减去 .deep-trail 那一行，保持两模式杯子落点一致） */
+function moodFieldH(base){return Math.round(base*moodScale());}
+
 function layoutBubbles(){
   bubbleField.innerHTML='';
+  const s=moodScale();
+  bubbleField.style.height=moodFieldH(310)+'px';
   /* 4 列 × N 行自动网格：每格内做小幅随机偏移，
      保留错落的手工感，同时能容纳任意数量的心情词。 */
   const COLS=4;
@@ -96,12 +112,13 @@ function layoutBubbles(){
     const stagger=(row%2)?colW*0.28:0;
     const lx=col*colW+stagger+(Math.random()*3-1.5);
     const ty=row*rowH+(Math.random()*4-2);
+    const sz=Math.round(m.size*s);
     const el=document.createElement('div');
     el.className='bubble';
     el.dataset.id=m.id;
     el.style.cssText=`left:${Math.max(0,Math.min(78,lx)).toFixed(1)}%;
       top:${Math.max(0,Math.min(80,ty)).toFixed(1)}%;
-      width:${m.size}px;height:${m.size}px;
+      width:${sz}px;height:${sz}px;
       background:radial-gradient(circle at 32% 28%,${m.c}f0,${m.c}88 62%,${m.c}44);
       animation-delay:${(i*0.24).toFixed(2)}s;`;
     el.innerHTML=`<div class="bub-emo">${m.emo}</div><div class="bub-txt">${m.txt}</div>`;
@@ -109,6 +126,27 @@ function layoutBubbles(){
     bubbleField.appendChild(el);
   });
 }
+
+/* 旋转屏幕 / 收起键盘 / 浏览器地址条伸缩后，重新按新视口铺一遍。
+   只在高度变化超过阈值时才重排，避免 iOS 地址条微抖动导致气泡乱跳。 */
+let _moodVH=window.innerHeight;
+let _moodRelayoutT=null;
+function scheduleMoodRelayout(){
+  clearTimeout(_moodRelayoutT);
+  _moodRelayoutT=setTimeout(()=>{
+    if(Math.abs(window.innerHeight-_moodVH)<60)return;
+    _moodVH=window.innerHeight;
+    killGhost();
+    layoutBubbles();
+    syncShaker();
+    // DEEP 正在用的话，同步重铺当前层
+    if(typeof deepOn!=='undefined'&&deepOn&&typeof renderDeepLayer==='function'){
+      renderDeepLayer();
+    }
+  },220);
+}
+window.addEventListener('resize',scheduleMoodRelayout);
+window.addEventListener('orientationchange',scheduleMoodRelayout);
 
 /* ---- 拖拽（Pointer Events，同时支持鼠标与触屏） ----
    [BUGFIX] 之前 ghost（跟随光标的克隆气泡）会卡在画面上不动，根因三条：

@@ -257,6 +257,9 @@ function renderDeepLayer(){
   const COLS=3;
   const rows=Math.ceil(opts.length/COLS);
   const colW=100/COLS,rowH=100/rows;
+  // [移动端] 与横向气泡池共用同一套缩放系数（见 mood.js moodScale）
+  const s=(typeof moodScale==='function')?moodScale():1;
+  deepFieldEl.style.height=Math.round(281*s)+'px';
 
   deepFieldEl.innerHTML='';
   opts.forEach((o,i)=>{
@@ -267,7 +270,7 @@ function renderDeepLayer(){
     const el=document.createElement('div');
     el.className='bubble b-in';
     el.dataset.id=o.id;
-    const sz=o.size||70;
+    const sz=Math.round((o.size||70)*s);
     el.style.cssText=`left:${Math.max(0,Math.min(74,lx)).toFixed(1)}%;`+
       `top:${Math.max(0,Math.min(76,ty)).toFixed(1)}%;width:${sz}px;height:${sz}px;`+
       `background:radial-gradient(circle at 32% 28%,${o.c}f0,${o.c}88 62%,${o.c}44);`+

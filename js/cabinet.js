@@ -80,7 +80,21 @@ const CLASSIC_BAR=[
   {zh:'最后一言',en:'Last Word',base:'金酒',abv:26,tags:['草本','酸','复杂'],
    note:'有些事到此为止，这杯替你说最后一句话。'},
 ];
-CLASSIC_BAR.forEach(c=>{c.img='酒柜/'+c.zh+'.png';c.kind='classic';});
+/* [性能] 酒柜图片三档图源
+   原 酒柜/*.png 是 1760×2336 的母版，单张 1~4MB、35 张共 64MB。
+   移动端切进「我的酒柜」要一次性拉 35 张原图，首屏直接卡住数秒。
+   现改为：
+     列表(110px 显示) → 酒柜/thumbs/*.jpg  480px 宽，共 616KB
+     详情(380px 显示) → 酒柜/mid/*.jpg     900px 宽，共 1.9MB
+     原 PNG 作为母版保留，不再由前端加载。
+   缩略图由 scripts/optimize-images.sh 生成（macOS sips，零依赖）。
+   若缩略图缺失，onerror 会自动回退到原 PNG，不会出现空图。 */
+CLASSIC_BAR.forEach(c=>{
+  c.img      = '酒柜/'+c.zh+'.png';          // 母版（兜底）
+  c.imgThumb = '酒柜/thumbs/'+c.zh+'.jpg';   // 列表
+  c.imgMid   = '酒柜/mid/'+c.zh+'.jpg';      // 详情
+  c.kind     = 'classic';
+});
 
 const KEEP_KEY='kuai_cabinet_v1';
 let keptList=[];            // 珍藏列表
@@ -187,9 +201,16 @@ function renderCabinet(){
   body.innerHTML=html;
 
   // 逐个上架
+  // [性能] 原来是 40+i*46，35 瓶要 1.6s 才全部就位，移动端观感很"卡"。
+  // 现在只对首屏可见的前 12 瓶做错峰入场，后面的直接就位 ——
+  // 反正它们在滚动线以下，用户看不到入场动画，只会感觉到延迟。
   body.querySelectorAll('.bottle').forEach((el,i)=>{
-    const t=setTimeout(()=>el.classList.add('in'),40+i*46);
-    cabTimers.push(t);
+    if(i<12){
+      const t=setTimeout(()=>el.classList.add('in'),40+i*38);
+      cabTimers.push(t);
+    }else{
+      el.classList.add('in');
+    }
     el.addEventListener('click',()=>openSheet(list[+el.dataset.idx],+el.dataset.idx));
   });
   // 珍藏的自调酒没有照片，用生成的酒杯补上
@@ -201,9 +222,15 @@ function renderCabinet(){
 
 function bottleHTML(d,idx){
   if(d.kind==='classic'){
+    /* [性能] 列表只加载 480px 缩略图；
+       decoding="async" 让解码不阻塞主线程滚动，
+       width/height 提前占位避免图片陆续到达时布局反复重排（移动端卡顿主因之一），
+       onerror 兜底回退母版 PNG。 */
     return `<div class="bottle" data-idx="${idx}">
       <div class="bottle-pic">
-        <img src="${encodeURI(d.img)}" alt="${d.zh}" loading="lazy">
+        <img src="${encodeURI(d.imgThumb||d.img)}" alt="${d.zh}"
+             loading="lazy" decoding="async" width="360" height="480"
+             onerror="this.onerror=null;this.src='${encodeURI(d.img)}'">
       </div>
       <div class="bottle-name">${d.zh}</div>
       <div class="bottle-abv">${d.abv}% ABV</div>
@@ -233,7 +260,9 @@ function openSheet(d,idx){
   const notes=[d.topNote,d.midNote,d.baseNote].filter(Boolean);
   sheetScroll.innerHTML=
     (isClassic
-      ? `<div class="sheet-pic"><img src="${encodeURI(d.img)}" alt="${d.zh}"></div>`
+      ? `<div class="sheet-pic"><img src="${encodeURI(d.imgMid||d.img)}" alt="${d.zh}"
+             decoding="async"
+             onerror="this.onerror=null;this.src='${encodeURI(d.img)}'"></div>`
       : `<div class="sheet-pic" style="background:radial-gradient(ellipse 65% 60% at 50% 55%,${d.glowColor}55,rgba(0,0,0,0.5));display:flex;align-items:center;justify-content:center;">
            <svg id="sheet-glass" viewBox="0 0 150 180" style="width:150px;height:170px;position:relative;z-index:1;"></svg>
          </div>`)+

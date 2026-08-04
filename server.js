@@ -402,8 +402,11 @@ const server = http.createServer((req, res) => {
       ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
       ".webp": "image/webp", ".gif": "image/gif", ".svg": "image/svg+xml" };
     const headers = { "Content-Type": types[ext] || "application/octet-stream" };
-    // 酒柜图片体积较大，加上缓存避免每次切页都重新下载
-    if (/^image\//.test(headers["Content-Type"])) headers["Cache-Control"] = "public, max-age=86400";
+    // 酒柜图片体积较大，加上长缓存 + immutable，避免每次切页都重新下载
+    // （thumbs/mid 都是构建产物，内容变了文件名也会变，可以放心 immutable）
+    if (/^image\//.test(headers["Content-Type"])) {
+      headers["Cache-Control"] = "public, max-age=604800, immutable";
+    }
     res.writeHead(200, headers);
     res.end(data);
   });
