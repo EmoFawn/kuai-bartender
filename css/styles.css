@@ -325,7 +325,14 @@ textarea::placeholder{color:var(--muted);}
   font-family:'Playfair Display',serif;font-style:italic;font-size:13px;color:var(--muted);white-space:nowrap;}
 
 /* result sub */
-#sub-result{padding-bottom:36px;}
+/* [BUGFIX·结果页内容被裁] .sub 是 column flex 容器，子项默认 flex-shrink:1。
+   内容一多（AI 版多了「我读到的」+ 配方 + 调酒师卡片），子项不是把容器撑高
+   触发滚动，而是被 flex 按比例压扁；而 .res-card 又是 overflow:hidden，
+   压扁的部分就被直接裁掉 —— 表现为「有部分内容显示不出来」。
+   对策：结果页所有直接子项 flex-shrink:0 + justify-content:flex-start，
+   让内容老老实实溢出，由 .sub 自身的 overflow-y:auto 接管滚动。 */
+#sub-result,#mood-sub-result{padding-bottom:36px;justify-content:flex-start;}
+#sub-result>*,#mood-sub-result>*{flex-shrink:0;}
 .res-card{
   width:calc(100% - 28px);max-width:432px;
   margin:16px auto 0;
@@ -333,7 +340,6 @@ textarea::placeholder{color:var(--muted);}
   border-radius:22px;overflow:hidden;
 }
 .res-hd{padding:24px 24px 0;text-align:center;}
-.res-label{font-family:'Inter',-apple-system,sans-serif;font-size:9px;letter-spacing:0.25em;color:var(--muted);margin-bottom:8px;}
 .res-name-zh{font-size:24px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1.3;}
 .res-name-en{font-family:'Playfair Display','Georgia',serif;font-style:italic;font-size:13px;color:var(--muted);margin-bottom:20px;}
 /* ======= 酒杯视觉（SVG 真实杯型） ======= */
@@ -357,6 +363,52 @@ textarea::placeholder{color:var(--muted);}
   padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;}
 .info-lbl{color:var(--muted);font-family:'Inter',-apple-system,sans-serif;letter-spacing:0.04em;}
 .info-val{color:var(--text);}
+
+/* ======= 调酒配方（结果页，紧跟基酒那一行） =======
+   默认折叠成一行摘要（材料数 + 总量），点一下向下展开完整配方，
+   这样既不挤压首屏，又能在移动端完整看到每一味材料的用量。 */
+.rx-wrap{border-bottom:1px solid rgba(255,255,255,0.05);}
+.rx-toggle{
+  display:flex;align-items:center;gap:8px;padding:9px 0;
+  cursor:pointer;user-select:none;font-size:12px;
+  transition:color 0.22s;
+}
+.rx-toggle-lbl{color:var(--muted);font-family:'Inter',-apple-system,sans-serif;
+  letter-spacing:0.04em;white-space:nowrap;}
+.rx-toggle-sum{flex:1;text-align:right;color:rgba(201,169,110,0.8);
+  font-family:'Inter',-apple-system,sans-serif;font-size:11px;letter-spacing:0.03em;}
+.rx-caret{font-size:9px;color:rgba(201,169,110,0.7);flex-shrink:0;
+  transition:rotate 0.3s cubic-bezier(.22,1,.36,1);}
+.rx-wrap.open .rx-caret{rotate:180deg;}
+.rx-toggle:hover .rx-toggle-lbl,.rx-wrap.open .rx-toggle-lbl{color:var(--gold);}
+/* 展开体：用 grid-template-rows 0fr→1fr 做高度动画，无需写死 max-height */
+.rx-body{
+  display:grid;grid-template-rows:0fr;
+  transition:grid-template-rows 0.36s cubic-bezier(.22,1,.36,1),
+             opacity 0.3s ease;
+  opacity:0;
+}
+.rx-wrap.open .rx-body{grid-template-rows:1fr;opacity:1;}
+.rx-body>.rx-inner{overflow:hidden;min-height:0;}
+/* 材料行：名称在左、用量在右，中间点线相连，像酒单上的配方 */
+.rx-row{display:flex;align-items:baseline;gap:7px;padding:3.5px 0;}
+.rx-row:first-child{padding-top:2px;}
+.rx-name{font-size:12.5px;color:rgba(232,221,208,0.92);white-space:nowrap;}
+.rx-dot{flex:1;min-width:12px;height:1px;margin-bottom:3px;
+  background-image:linear-gradient(90deg,rgba(201,169,110,0.4) 0 2px,transparent 2px 5px);
+  background-size:5px 1px;background-repeat:repeat-x;}
+.rx-amt{font-family:'Inter',-apple-system,sans-serif;font-size:11.5px;
+  color:var(--gold);letter-spacing:0.03em;white-space:nowrap;}
+/* 做法 / 装饰 */
+.rx-meta{display:flex;gap:8px;margin-top:7px;padding-top:7px;
+  border-top:1px solid rgba(255,255,255,0.05);}
+.rx-meta+.rx-meta{margin-top:5px;padding-top:5px;}
+.rx-k{flex-shrink:0;font-size:10px;color:rgba(201,169,110,0.85);
+  padding:2px 7px;border-radius:999px;line-height:1.5;
+  border:1px solid rgba(201,169,110,0.2);background:rgba(201,169,110,0.07);}
+.rx-v{font-size:12px;color:rgba(232,221,208,0.7);line-height:1.7;}
+.rx-tip{font-size:10px;color:rgba(107,98,85,0.85);letter-spacing:0.04em;
+  padding:6px 0 8px;font-family:'Inter',-apple-system,sans-serif;}
 .notes-row{display:flex;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
 .note-col{flex:1;text-align:center;padding:0 6px;border-right:1px solid rgba(255,255,255,0.05);}
 .note-col:last-child{border-right:none;}
@@ -367,13 +419,8 @@ textarea::placeholder{color:var(--muted);}
 .str-fill{height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));
   border-radius:2px;transition:width 1s cubic-bezier(0.4,0,0.2,1);}
 .res-quote{padding:14px 20px 18px;text-align:center;}
-/* AI 读到的内容 */
-.reading-row{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.05);}
-.reading-lbl{font-size:9px;letter-spacing:0.16em;color:var(--muted);
-  font-family:'Inter',-apple-system,sans-serif;display:block;margin-bottom:4px;}
-.reading-txt{font-size:12px;color:var(--gold);line-height:1.6;}
-.mode-badge{margin-top:9px;font-size:9px;letter-spacing:0.12em;color:rgba(107,98,85,0.75);
-  font-family:'Inter',-apple-system,sans-serif;}
+/* AI 读到的：无标题，靠暗金色与斜体自成一段，区别于下方调酒师卡片的正文 */
+.reading-txt{font-size:12.5px;color:var(--gold);line-height:1.7;letter-spacing:0.01em;}
 .quote-txt{font-size:12px;color:var(--muted);font-style:italic;line-height:1.75;}
 .res-actions{width:calc(100% - 28px);max-width:432px;margin:12px auto 0;display:flex;gap:10px;}
 .btn-sec{flex:1;background:var(--white-btn);color:var(--white-btn-text);
@@ -436,30 +483,38 @@ textarea::placeholder{color:var(--muted);}
   position:relative;width:100%;max-width:440px;
   height:310px;margin:4px auto 0;flex-shrink:0;
 }
-/* --bs 让 hover 缩放能与漂浮 keyframes 共存（否则 animation 会覆盖 hover 的 transform） */
-@property --bs{syntax:'<number>';inherits:false;initial-value:1;}
+/* [BUGFIX·气泡逐个变小] 曾经这里用一个注册自定义属性 --bs 承载缩放，
+   再在 bubFloat 里写 transform:translateY(...) scale(var(--bs))。
+   但按 CSS 规范，keyframe 里的 var() 是拿「基础计算值」解析的 ——
+   动画/过渡对自定义属性的改动对另一个动画的 var() 不可见。
+   于是 .bubble.b-in{--bs:0.4} 这个基础值会被 bubFloat 读到，
+   每个气泡各自的 bubFloat 延迟一到（0.5s / 0.69s / 0.88s…），
+   transform 就突然跳成 scale(0.4) —— 表现就是「图标一个个变小」。
+
+   现在改用独立变换属性：漂浮只动 translate，缩放只动 scale，
+   两者互不干扰，也彻底不需要 var()。transform 让给拖拽幽灵专用。 */
 .bubble{
-  --bs:1;
   position:absolute;border-radius:50%;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   cursor:grab;user-select:none;touch-action:none;
   border:1px solid rgba(255,255,255,0.16);
   backdrop-filter:blur(3px);
-  transition:--bs 0.28s cubic-bezier(.34,1.56,.64,1),opacity 0.3s,box-shadow 0.3s;
+  scale:1;
+  transition:scale 0.28s cubic-bezier(.34,1.56,.64,1),opacity 0.3s,box-shadow 0.3s;
   animation:bubFloat 5s ease-in-out infinite;
-  will-change:transform;
+  will-change:translate,scale;
 }
-.bubble:hover{--bs:1.09;box-shadow:0 6px 22px rgba(0,0,0,0.35);z-index:5;}
+.bubble:hover{scale:1.09;box-shadow:0 6px 22px rgba(0,0,0,0.35);z-index:5;}
 /* 拖拽幽灵：不参与漂浮动画，transform 完全由 JS 内联控制 */
 .bubble.dragging{cursor:grabbing;animation:none !important;z-index:100;transition:none;
-  box-shadow:0 14px 34px rgba(0,0,0,0.5);}
-.bubble.used{opacity:0.16;pointer-events:none;--bs:0.82;}
+  translate:none;box-shadow:0 14px 34px rgba(0,0,0,0.5);}
+.bubble.used{opacity:0.16;pointer-events:none;scale:0.82;}
 .bub-emo{font-size:18px;line-height:1;}
 .bub-txt{font-size:10px;color:rgba(255,255,255,0.92);margin-top:2px;letter-spacing:0.02em;
   max-width:92%;text-align:center;line-height:1.2;word-break:break-all;}
 @keyframes bubFloat{
-  0%,100%{transform:translateY(0) scale(var(--bs));}
-  50%{transform:translateY(-7px) scale(var(--bs));}
+  0%,100%{translate:0 0;}
+  50%{translate:0 -7px;}
 }
 
 /* 酒杯投放区 */
@@ -575,22 +630,22 @@ textarea::placeholder{color:var(--muted);}
   position:relative;width:100%;max-width:440px;
   height:281px;flex-shrink:0;margin:2px auto 0;
 }
-/* 进/出场：不碰 transform（transform 归 bubFloat 动画），只动 opacity 与 --bs */
+/* 进/出场：只动 opacity 与 scale（漂浮归 translate，互不抢占） */
 /* [BUGFIX·闪烁] bubIn 带 animation-delay（逐个错峰入场）。
    若 fill-mode 只写 forwards，delay 期间元素维持 CSS 默认状态（opacity:1），
    等 delay 结束才被 keyframe 的 from{opacity:0} 拽回去 —— 视觉上就是
    「先整屏亮一下，再一个个淡入」的闪烁。
    解决：基础态显式 opacity:0，并把 fill-mode 改成 both（前后都填充）。 */
-.bubble.b-in{opacity:0;--bs:0.4;
+.bubble.b-in{opacity:0;scale:0.4;
   animation:bubIn 0.46s cubic-bezier(.22,1,.36,1) both,
             bubFloat 5s ease-in-out infinite;}
 @keyframes bubIn{
-  from{opacity:0;--bs:0.4;}
-  to{opacity:1;--bs:1;}
+  from{opacity:0;scale:0.4;}
+  to{opacity:1;scale:1;}
 }
-.bubble.b-out{opacity:0;--bs:0.35;animation:none !important;
-  transition:opacity 0.3s ease,--bs 0.3s ease;pointer-events:none;}
-.bubble.b-chosen{--bs:1.16;box-shadow:0 0 0 1px var(--gold),0 10px 30px rgba(0,0,0,0.5);}
+.bubble.b-out{opacity:0;scale:0.35;animation:none !important;
+  transition:opacity 0.3s ease,scale 0.3s ease;pointer-events:none;}
+.bubble.b-chosen{scale:1.16;box-shadow:0 0 0 1px var(--gold),0 10px 30px rgba(0,0,0,0.5);}
 
 /* 回上一层：尺寸与普通模式的「开始调制」主按钮对齐，
    并用 margin-top:auto 吸到底部，让两个模式的底部节奏一致。 */
@@ -750,6 +805,42 @@ textarea::placeholder{color:var(--muted);}
 .sheet-quote{font-size:12.5px;color:var(--muted);font-style:italic;
   line-height:1.8;margin-top:14px;padding-top:13px;
   border-top:1px solid rgba(255,255,255,0.055);}
+
+/* ======= 调酒配比（经典酒详情卡） =======
+   做成一张"配方卡"：暗金描边 + 左侧竖线，材料两端对齐、中间点线相连，
+   视觉上区别于上方的标签云和下方的引言。 */
+.sheet-recipe{
+  margin-top:15px;padding:13px 15px 12px;
+  border:1px solid rgba(201,169,110,0.18);border-radius:13px;
+  background:linear-gradient(135deg,rgba(201,169,110,0.055),rgba(0,0,0,0.16));
+  position:relative;overflow:hidden;
+}
+.sheet-recipe::before{
+  content:'';position:absolute;left:0;top:11px;bottom:11px;width:2px;
+  background:linear-gradient(180deg,transparent,var(--gold),transparent);
+  opacity:0.55;
+}
+.rc-hd{display:flex;align-items:baseline;gap:8px;margin-bottom:9px;}
+.rc-lbl{font-family:'Inter',-apple-system,sans-serif;font-size:8.5px;
+  letter-spacing:0.24em;color:rgba(201,169,110,0.6);}
+.rc-zh{font-size:12px;color:rgba(232,221,208,0.82);letter-spacing:0.06em;}
+.rc-list{display:flex;flex-direction:column;gap:1px;}
+/* 材料行：名称在左、用量在右，中间由 flex:1 的点线填满 */
+.rc-row{display:flex;align-items:baseline;gap:7px;padding:3.5px 0;}
+.rc-name{font-size:12.5px;color:rgba(232,221,208,0.92);white-space:nowrap;}
+.rc-dot{flex:1;min-width:12px;height:1px;margin-bottom:3px;
+  background-image:linear-gradient(90deg,rgba(201,169,110,0.42) 0 2px,transparent 2px 5px);
+  background-size:5px 1px;background-repeat:repeat-x;}
+.rc-amt{font-family:'Inter',-apple-system,sans-serif;font-size:11.5px;
+  color:var(--gold);letter-spacing:0.03em;white-space:nowrap;}
+/* 做法 / 装饰：换行说明，标签用小胶囊压住 */
+.rc-meta{display:flex;gap:8px;margin-top:8px;padding-top:8px;
+  border-top:1px solid rgba(255,255,255,0.05);}
+.rc-meta+.rc-meta{margin-top:6px;padding-top:6px;}
+.rc-k{flex-shrink:0;font-size:10px;color:rgba(201,169,110,0.85);
+  padding:2px 7px;border-radius:999px;line-height:1.5;
+  border:1px solid rgba(201,169,110,0.2);background:rgba(201,169,110,0.07);}
+.rc-v{font-size:12px;color:rgba(232,221,208,0.7);line-height:1.7;}
 .sheet-actions{display:flex;gap:9px;margin-top:16px;}
 .sheet-btn{
   flex:1;padding:12px;border-radius:999px;border:1px solid rgba(255,255,255,0.09);
@@ -884,7 +975,7 @@ textarea::placeholder{color:var(--muted);}
 
 /* ---- 触屏：hover 会"粘住"，统一关掉 ---- */
 @media (hover:none){
-  .bubble:hover{--bs:1;box-shadow:none;}
+  .bubble:hover{scale:1;box-shadow:none;}
   .btn-main:hover,.btn-sec:hover,.deep-up:hover,.btn-door:hover,
   .sheet-btn.solid:hover,.card-btn.solid:hover{transform:none;box-shadow:none;}
   .bottle:hover .bottle-pic{transform:none;box-shadow:none;}

@@ -20,6 +20,99 @@ function drinkABV(c){
 // ABV → 强度条宽度（以 40% ABV 为满格，更符合直觉）
 function abvBarPct(abv){return Math.max(6,Math.min(100,abv/40*100));}
 
+/* ===== 配方统一口径 =====
+   全站有三种配方来源，格式各不相同：
+     · 大模型返回      → [['金酒','45 ml'],...]   已是 [名称,用量] 对
+     · COCKTAILS 本地库 → ['金酒 45ml',...]        名称与用量挤在一个字符串里
+     · SOLO_BLEND/DEEP → 完全没有 recipe 字段
+   结果页只认一种格式，所以这里统一收口成 [[名称,用量],...]。 */
+function normRecipe(list){
+  if(!Array.isArray(list))return [];
+  return list.map(item=>{
+    if(Array.isArray(item))return [String(item[0]||''),String(item[1]||'')];
+    const s=String(item||'').trim();
+    if(!s)return null;
+    // '白朗姆酒 50ml' / '安高天娜苦精 2dash' / '方糖 1块' → 从末段切出用量
+    const m=s.match(/^(.*?)[\s·]*([0-9]+(?:\.[0-9]+)?\s*(?:ml|ML|dash|tsp|oz|块|片|个|粒|角|滴)[\s\S]*|适量|少许|补满)$/);
+    if(m&&m[1].trim())return [m[1].trim(),m[2].trim()];
+    return [s,''];
+  }).filter(Boolean);
+}
+
+/* 本地引擎兜底配方：SOLO_BLEND / DEEP 混合出来的酒没有 recipe，
+   但结果页不该出现「配方空白」。这里按基酒 + 三段香调反推一份
+   合乎标准配比的骨架，用量随 strength 浮动，保证与 ABV 自洽。 */
+const BASE_ML_BY_STRENGTH=[0,30,40,45,50,55];
+// 香调关键词 → 该材料的惯用形态与用量
+const NOTE_FORM=[
+  [/气泡|苏打|碳酸/,        '苏打水',     '补满'],
+  [/香槟|Prosecco/i,       '香槟',       '90 ml'],
+  [/汤力|奎宁/,            '汤力水',     '120 ml'],
+  [/可乐/,                 '可乐',       '120 ml'],
+  [/姜/,                   '姜汁啤酒',   '100 ml'],
+  [/奶油|奶香|牛奶/,        '淡奶油',     '30 ml'],
+  [/咖啡|espresso/i,       '浓缩咖啡',   '30 ml'],
+  [/可可/,                 '可可利口酒', '20 ml'],
+  [/蜂蜜/,                 '蜂蜜',       '15 ml'],
+  [/糖蜜|甘蔗|焦糖|糖/,     '糖浆',       '15 ml'],
+  [/青柠|莱姆|lime/i,      '青柠汁',     '20 ml'],
+  [/柠檬|lemon/i,          '柠檬汁',     '20 ml'],
+  [/葡萄柚|柚/,            '葡萄柚汁',   '60 ml'],
+  [/橙皮|苦橙|血橙|柑|橙/,  '橙汁',       '60 ml'],
+  [/荔枝/,                 '荔枝利口酒', '20 ml'],
+  [/玫瑰|花香|白花/,        '玫瑰糖浆',   '15 ml'],
+  [/桃/,                   '桃子利口酒', '20 ml'],
+  [/黑加仑|蔓越莓|莓|樱桃/, '莓果糖浆',   '15 ml'],
+  [/百香果|菠萝|杏|苹果/,   '果汁',       '60 ml'],
+  [/薄荷|mint/i,           '薄荷叶',     '6 片'],
+  [/苦艾/,                 '苦艾酒',     '20 ml'],
+  [/苦草本|草本|杜松/,      '味美思',     '20 ml'],
+  [/盐|海盐/,              '盐',         '少许'],
+  [/肉桂/,                 '肉桂棒',     '1 根'],
+  [/香草/,                 '香草糖浆',   '10 ml'],
+  [/泥煤|烟熏|橡木/,        '苦精',       '2 dash'],
+  [/陈皮/,                 '陈皮',       '1 片'],
+  [/热水/,                 '热水',       '100 ml'],
+];
+function localRecipe(c){
+  if(!c)return [];
+  const st=Math.max(1,Math.min(5,Math.round(c.strength||3)));
+  const base=c.base||'威士忌';
+  // 起泡类基酒本身就是长饮主体，用量在 90-120ml，不能按烈酒的 40ml 给
+  const sparkling=/香槟|Prosecco|Cava|起泡|气泡酒/i.test(base);
+  const rows=[[base,sparkling?'90 ml':BASE_ML_BY_STRENGTH[st]+' ml']];
+  const seen=new Set([base]);
+  let total=sparkling?90:BASE_ML_BY_STRENGTH[st];   // 已累计的液体量，用于控总量
+  [c.topNote,c.midNote,c.baseNote].forEach(note=>{
+    if(!note||rows.length>=4)return;
+    // 香调本来就是基酒自带的性格（金酒的杜松、香槟的气泡），
+    // 再补一味材料反而画蛇添足，直接跳过
+    if(base.includes(note)||note.includes(base))return;
+    if(sparkling&&/气泡|苏打|碳酸/.test(note))return;
+    if(/金酒|gin/i.test(base)&&/杜松/.test(note))return;
+    const hit=NOTE_FORM.find(([re])=>re.test(note));
+    if(!hit)return;
+    if(seen.has(hit[1]))return;
+    // 体积预算：两味大容量辅料（果汁 60 + 汤力水 120）叠在一起会冲到
+    // 240ml 以上，既不像一杯酒，也和 abv 对不上。超预算就跳过这一味。
+    const add=(String(hit[2]).match(/([0-9.]+)\s*ml/i)||[0,0])[1];
+    if(total+Number(add)>180)return;
+    total+=Number(add);
+    seen.add(hit[1]);
+    rows.push([hit[1],hit[2]]);
+  });
+  // 一种材料都没匹配上时，补一份最通用的酸甜骨架，避免只剩一行基酒
+  if(rows.length===1){
+    rows.push(['柠檬汁','20 ml'],['糖浆','15 ml']);
+  }
+  return rows;
+}
+/* 取这杯酒最终要展示的配方：优先大模型/本地库给的，没有才现推一份 */
+function drinkRecipe(c){
+  const r=normRecipe(c&&c.recipe);
+  return r.length?r:localRecipe(c);
+}
+
 function detectCtx(text){
   const t=text.toLowerCase(),ms={},fs={};
   for(const[m,kws]of Object.entries(MOOD_KW)){let s=0;kws.forEach(k=>{if(t.includes(k))s+=3;});if(s)ms[m]=(ms[m]||0)+s;}

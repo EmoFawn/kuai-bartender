@@ -292,32 +292,81 @@ function fillBarCard(cardId,hlId,bodyId,tagId,c,byAI){
   }
 }
 
+/* ===== 调酒配方渲染（对话调酒 / 心情调酒共用） =====
+   prefix 是 'r' 或 'm'，对应两个结果页的 id 前缀。
+   折叠态只显示「N 味材料 · 总量 xx ml」，点开才铺完整清单 —— 
+   结果页信息已经很密，配方默认收起，需要照着做的人再展开。 */
+function renderRecipe(prefix,c){
+  const wrap=document.getElementById(prefix+'-rx-wrap');
+  const body=document.getElementById(prefix+'-rx-body');
+  const sum=document.getElementById(prefix+'-rx-sum');
+  if(!wrap||!body)return;
+  const rows=drinkRecipe(c);
+  if(!rows.length){wrap.style.display='none';return;}
+  wrap.style.display='';
+  wrap.classList.remove('open');                      // 每杯新酒都回到折叠态
+  const tg=document.getElementById(prefix+'-rx-toggle');
+  if(tg)tg.setAttribute('aria-expanded','false');
+
+  // 摘要：材料数 + 可累加的液体总量（ml 才计入，「补满」「少许」这类跳过）
+  let ml=0;
+  rows.forEach(([,amt])=>{
+    const m=String(amt).match(/([0-9]+(?:\.[0-9]+)?)\s*ml/i);
+    if(m)ml+=parseFloat(m[1]);
+  });
+  sum.textContent=rows.length+' 味材料'+(ml?' · 约 '+Math.round(ml)+' ml':'');
+
+  const esc=s=>String(s).replace(/[&<>]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
+  const list=rows.map(([name,amt])=>
+    `<div class="rx-row"><span class="rx-name">${esc(name)}</span>
+       <span class="rx-dot"></span>
+       <span class="rx-amt">${esc(amt||'适量')}</span></div>`).join('');
+  const method=c.method?`<div class="rx-meta"><span class="rx-k">做法</span><span class="rx-v">${esc(c.method)}</span></div>`:'';
+  const garnish=c.garnish?`<div class="rx-meta"><span class="rx-k">装饰</span><span class="rx-v">${esc(c.garnish)}</span></div>`:'';
+  // 没有 recipe 字段时是本地推的骨架，标注清楚，别让人当成权威配方
+  const guessed=!(c.recipe&&c.recipe.length);
+  const tip=guessed?`<div class="rx-tip">※ 按基酒与香调推算的参考配比</div>`:'';
+  body.innerHTML=`<div class="rx-inner">${list}${method}${garnish}${tip}</div>`;
+}
+
+/* 展开/收起：两个结果页各绑一次，键盘也能操作 */
+['r','m'].forEach(p=>{
+  const tg=document.getElementById(p+'-rx-toggle');
+  const wrap=document.getElementById(p+'-rx-wrap');
+  if(!tg||!wrap)return;
+  const toggle=()=>{
+    const on=wrap.classList.toggle('open');
+    tg.setAttribute('aria-expanded',on?'true':'false');
+  };
+  tg.addEventListener('click',toggle);
+  tg.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}
+  });
+});
+
 function renderResult(rec){
   const c=rec.primary,s=rec.secondary;
   syncKeepBtn(document.getElementById('btn-keep'),c,'chat');
   document.getElementById('r-name-zh').textContent=c.poeticZh;
   document.getElementById('r-name-en').textContent=c.poeticEn;
   document.getElementById('r-base').textContent=c.base;
+  renderRecipe('r',c);
   document.getElementById('r-top').textContent=c.topNote||'—';
   document.getElementById('r-mid').textContent=c.midNote||'—';
   document.getElementById('r-base-note').textContent=c.baseNote||'—';
-  document.getElementById('r-comment').textContent=`"${c.comment}"`;
   const abv=drinkABV(c);
   document.getElementById('r-pct').textContent=abv+'% ABV';
   setTimeout(()=>{document.getElementById('r-bar').style.width=abvBarPct(abv)+'%';},300);
   renderGlassInto('r-glass',c);
   document.getElementById('r-glow').style.background=c.glowColor;
 
-  // AI 读到的内容
+  /* [精简] 调酒师的一句话与模式标识已下线（交给下方调酒师卡片），
+     但「AI 读到的」保留 —— 只是去掉了标题，让这句话自己说话。 */
   const rr=document.getElementById('r-reading-row');
   if(c.reading){
     document.getElementById('r-reading').textContent=c.reading;
     rr.style.display='block';
   }else{rr.style.display='none';}
-
-  // 模式标识
-  document.getElementById('r-mode').textContent=
-    rec.byAI?'✦ AI 理解 · 为你现调':'○ 本地引擎 · 配置 LLM_API_KEY 解锁 AI 理解';
 
   // 调酒师卡片
   fillBarCard('chat-bar-card','chat-card-headline','chat-card-body','chat-card-tag',c,rec.byAI);
@@ -337,7 +386,6 @@ document.getElementById('btn-remix').addEventListener('click',resetChat);
 document.getElementById('btn-save').addEventListener('click',()=>{
   if(!lastRec)return;
   saveCard(lastRec.primary,{
-    label:'YOUR EXCLUSIVE BLEND',
     from:lastInput?'你说：'+lastInput:'',
   });
 });

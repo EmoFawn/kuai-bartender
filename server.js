@@ -184,7 +184,19 @@ const PERSONA = `你是「苦艾」调酒馆的主调酒师。你不是在推荐
 调酒原则：
 - 情绪与酒体必须对得上：疲惫配醇厚回甘，焦虑配清冽有气泡，钝痛配烈而干净，欢愉配明亮果调。
 - 配方必须真实可做，材料是酒吧里能拿到的，用量符合标准配比（总量 60-150ml）。
-- 颜色必须贴合情绪：低落用深琥珀/墨绿/暗紫，明快用琥珀金/柑橘橙，清冽用青碧/雪松灰蓝。避免俗艳的纯红纯蓝。`;
+- 颜色必须贴合情绪：低落用深琥珀/墨绿/暗紫，明快用琥珀金/柑橘橙，清冽用青碧/雪松灰蓝。避免俗艳的纯红纯蓝。
+
+配方（recipe）的硬性要求 —— 这是整杯酒最不能含糊的部分：
+- 3-6 种材料，按用量从多到少排列；第一项必须是基酒，且与 base 字段完全一致。
+- 用量要具体可执行：主料用 ml（如「45 ml」），苦精用 dash（如「2 dash」），
+  糖/果酱类可用 tsp，固体材料写个数或片数（如「1 块」「6 片」「1 个」）。
+  只有苏打水/汤力水/可乐这类补满的长饮材料，才允许写「补满」。
+- 全部液体总量控制在 60-150 ml，并且要能反推出你给的 abv：
+  烈酒占比越高，abv 越高，别出现「45ml 金酒 + 120ml 汤力水」却标 30% 这种矛盾。
+- 香调（topNote / midNote / baseNote）必须在配方里找得到出处，
+  不要出现配方里没有任何材料能解释的香气。
+- method 用一句话把关键动作讲清：摇 / 搅 / 兑 / 分层 / 捣压、用什么冰、滤不滤。
+- garnish 只写真正需要的装饰物；确实不需要就给空字符串。`;
 
 const SCHEMA_DOC = `严格只输出 JSON，不要 markdown 代码块，不要任何解释文字。
 
@@ -205,6 +217,8 @@ const SCHEMA_DOC = `严格只输出 JSON，不要 markdown 代码块，不要任
     "strength":  "酒感强度整数 1-5（1最柔，5最烈）",
     "abv":       "预估酒精度数字，如 22",
     "recipe":    [["材料名","用量"], ["材料名","用量"]],
+    "method":    "做法，一句话（如「加冰摇匀，滤入冰过的碟形杯」）",
+    "garnish":   "装饰物（如「橙皮」「盐边 / 青柠片」）；不需要就给空字符串",
     "comment":   "调酒师递上酒时说的一句话，1-2句。对着用户说，用「你」。要有分量，不要安慰腔。",
     "reading":   "你从用户这句话里读到了什么，1-2句。像在说一件他自己没说出口的事。",
     "card": {
@@ -264,6 +278,8 @@ function normalizeDrink(c) {
   const abvNum = Number(c.abv);
   c.abv       = abvNum > 0 && abvNum <= 60 ? Math.round(abvNum) : 0;
   c.recipe    = Array.isArray(c.recipe) ? c.recipe.filter(x => Array.isArray(x) && x.length >= 2) : [];
+  c.method    = typeof c.method  === "string" ? c.method.trim()  : "";
+  c.garnish   = typeof c.garnish === "string" ? c.garnish.trim() : "";
   c.comment   = c.comment || "今晚交给它。";
   c.card      = c.card && typeof c.card === "object" ? c.card : {};
   c.card.headline = c.card.headline || c.poeticZh;

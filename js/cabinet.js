@@ -80,6 +80,88 @@ const CLASSIC_BAR=[
   {zh:'最后一言',en:'Last Word',base:'金酒',abv:26,tags:['草本','酸','复杂'],
    note:'有些事到此为止，这杯替你说最后一句话。'},
 ];
+/* ========================================================
+   经典酒的调酒配比
+   ----------------------------------------------------------
+   key = CLASSIC_BAR 的 en 字段。
+   ratio  : [[材料, 用量], ...]  尽量按 IBA 官方配方，单位统一 ml，
+            少量调味用 dash / tsp / 叶 等惯用计量。
+   method : 做法（摇/搅/兑/分层…），一句话讲清操作。
+   garnish: 装饰物；没有就留空，渲染时会自动跳过。
+   ======================================================== */
+const CLASSIC_RECIPE={
+  'B-52':{ratio:[['咖啡利口酒','20 ml'],['百利甜','20 ml'],['金万利','20 ml']],
+    method:'按密度由重到轻依次贴壁缓倒，分三层不搅拌',garnish:''},
+  'Aperol Spritz':{ratio:[['Prosecco','90 ml'],['Aperol','60 ml'],['苏打水','30 ml']],
+    method:'杯中加满冰，直接兑和，轻搅一下',garnish:'橙片'},
+  'White Russian':{ratio:[['伏特加','50 ml'],['咖啡利口酒','20 ml'],['淡奶油','30 ml']],
+    method:'古典杯加冰，先兑前两者，奶油浮面',garnish:''},
+  'Sidecar':{ratio:[['干邑','50 ml'],['橙皮利口酒','20 ml'],['柠檬汁','20 ml']],
+    method:'摇酒壶加冰摇匀，滤入冰杯',garnish:'糖边 / 柠檬皮'},
+  'Daiquiri':{ratio:[['白朗姆','60 ml'],['青柠汁','25 ml'],['糖浆','15 ml']],
+    method:'加冰摇匀，双重过滤入冰杯',garnish:'青柠片'},
+  'Dry Martini':{ratio:[['金酒','60 ml'],['干味美思','10 ml']],
+    method:'调酒杯加冰搅拌 30 秒，滤入冰杯',garnish:'橄榄或柠檬皮'},
+  'Old Fashioned':{ratio:[['波本威士忌','60 ml'],['糖浆','10 ml'],['安高天娜苦精','2 dash']],
+    method:'古典杯化糖加大冰，搅拌至外壁挂霜',garnish:'橙皮'},
+  "Dark 'n' Stormy":{ratio:[['黑朗姆','60 ml'],['姜汁啤酒','100 ml'],['青柠汁','10 ml']],
+    method:'高球杯加冰兑姜啤，朗姆最后浮面成"风暴"',garnish:'青柠角'},
+  'Sex on the Beach':{ratio:[['伏特加','40 ml'],['桃子利口酒','20 ml'],['橙汁','40 ml'],['蔓越莓汁','40 ml']],
+    method:'加冰摇匀后倒入高球杯，或直接兑和',garnish:'橙片'},
+  'Gimlet':{ratio:[['金酒','60 ml'],['青柠汁','20 ml'],['糖浆','10 ml']],
+    method:'加冰摇匀，滤入冰过的碟形杯',garnish:'青柠片'},
+  'Zombie':{ratio:[['牙买加朗姆','45 ml'],['金朗姆','45 ml'],['高度朗姆','15 ml'],['青柠汁','20 ml'],['法勒南糖浆','15 ml'],['葡萄柚汁','15 ml']],
+    method:'碎冰摇匀倒入提基杯，一人一杯封顶',garnish:'薄荷 / 青柠'},
+  'Godfather':{ratio:[['苏格兰威士忌','45 ml'],['杏仁利口酒','15 ml']],
+    method:'古典杯加大冰，直接兑和轻搅',garnish:''},
+  'Gin & Tonic':{ratio:[['金酒','50 ml'],['汤力水','150 ml']],
+    method:'杯中加满冰，贴壁倒汤力水保气泡',garnish:'青柠角'},
+  'Blue Hawaii':{ratio:[['白朗姆','30 ml'],['蓝橙利口酒','15 ml'],['菠萝汁','60 ml'],['甜酸汁','15 ml']],
+    method:'加冰摇匀，倒入盛碎冰的飓风杯',garnish:'菠萝片 / 樱桃'},
+  'Tequila Sunrise':{ratio:[['龙舌兰','45 ml'],['橙汁','90 ml'],['红石榴糖浆','15 ml']],
+    method:'兑好龙舌兰与橙汁，糖浆沿壁沉底成渐层，不搅',garnish:'橙片'},
+  'Screwdriver':{ratio:[['伏特加','50 ml'],['橙汁','100 ml']],
+    method:'高球杯加冰，直接兑和',garnish:'橙片'},
+  'Margarita':{ratio:[['龙舌兰','50 ml'],['橙皮利口酒','20 ml'],['青柠汁','15 ml']],
+    method:'加冰摇匀，滤入抹好盐边的冰杯',garnish:'盐边 / 青柠片'},
+  'Manhattan':{ratio:[['黑麦威士忌','50 ml'],['甜味美思','20 ml'],['安高天娜苦精','2 dash']],
+    method:'调酒杯加冰搅匀，滤入冰过的碟形杯',garnish:'糖渍樱桃'},
+  'See You Tomorrow':{ratio:[['威士忌','45 ml'],['咖啡利口酒','15 ml'],['糖浆','5 ml'],['苦精','1 dash']],
+    method:'加冰搅匀，滤入冰过的古典杯',garnish:'柠檬皮'},
+  'Mojito':{ratio:[['白朗姆','45 ml'],['青柠汁','20 ml'],['白砂糖','2 tsp'],['薄荷叶','6 片'],['苏打水','补满']],
+    method:'薄荷与糖轻压出香，加冰兑朗姆，苏打补满',garnish:'薄荷枝'},
+  'Negroni':{ratio:[['金酒','30 ml'],['甜味美思','30 ml'],['金巴利','30 ml']],
+    method:'古典杯加大冰，等份兑和搅匀',garnish:'橙皮'},
+  'Espresso Martini':{ratio:[['伏特加','50 ml'],['咖啡利口酒','20 ml'],['浓缩咖啡','30 ml'],['糖浆','10 ml']],
+    method:'加冰用力摇出厚泡，滤入冰过的碟形杯',garnish:'三粒咖啡豆'},
+  'Hot Toddy':{ratio:[['威士忌','45 ml'],['蜂蜜','15 ml'],['柠檬汁','15 ml'],['热水','100 ml']],
+    method:'温杯后化开蜂蜜，兑酒与热水，别煮沸',garnish:'柠檬片 / 丁香 / 肉桂'},
+  'Clover Club':{ratio:[['金酒','45 ml'],['覆盆子糖浆','15 ml'],['柠檬汁','15 ml'],['蛋白','1 个']],
+    method:'先干摇起泡，再加冰摇匀，双重过滤',garnish:'覆盆子'},
+  'Tom Collins':{ratio:[['金酒','45 ml'],['柠檬汁','30 ml'],['糖浆','15 ml'],['苏打水','60 ml']],
+    method:'前三者摇匀滤入加冰的柯林杯，苏打补满',garnish:'柠檬片 / 樱桃'},
+  'Whiskey Sour':{ratio:[['波本威士忌','45 ml'],['柠檬汁','25 ml'],['糖浆','15 ml'],['蛋白','可选'] ],
+    method:'加冰摇匀，滤入冰杯；加蛋白则先干摇',garnish:'柠檬片 / 樱桃'},
+  'Salty Dog':{ratio:[['金酒','45 ml'],['葡萄柚汁','120 ml']],
+    method:'抹好盐边的杯中加冰，直接兑和',garnish:'盐边 / 葡萄柚片'},
+  'Champagne Cocktail':{ratio:[['香槟','90 ml'],['白兰地','10 ml'],['方糖','1 块'],['安高天娜苦精','2 dash']],
+    method:'方糖蘸苦精置杯底，注入香槟，白兰地浮面',garnish:'橙皮'},
+  'Yukiguni':{ratio:[['伏特加','40 ml'],['白橙皮利口酒','20 ml'],['青柠汁','2 tsp']],
+    method:'加冰摇匀，滤入抹好糖边的冰杯',garnish:'糖边 / 绿樱桃'},
+  'Bloody Mary':{ratio:[['伏特加','45 ml'],['番茄汁','90 ml'],['柠檬汁','15 ml'],['伍斯特酱','2 dash'],['塔巴斯科','1 dash'],['盐与黑胡椒','少许']],
+    method:'两杯之间来回滚动混合，避免摇散番茄汁',garnish:'芹菜梗 / 柠檬角'},
+  'Alexander':{ratio:[['白兰地','30 ml'],['可可利口酒','30 ml'],['鲜奶油','30 ml']],
+    method:'等份加冰摇匀，滤入冰过的碟形杯',garnish:'现磨肉豆蔻'},
+  'Piña Colada':{ratio:[['白朗姆','50 ml'],['椰浆','30 ml'],['菠萝汁','90 ml']],
+    method:'与碎冰一同搅打成绵密沙冰',garnish:'菠萝片 / 樱桃'},
+  'Long Island Iced Tea':{ratio:[['伏特加','15 ml'],['金酒','15 ml'],['白朗姆','15 ml'],['龙舌兰','15 ml'],['橙皮利口酒','15 ml'],['柠檬汁','25 ml'],['糖浆','15 ml'],['可乐','补满']],
+    method:'除可乐外摇匀滤入加冰长杯，可乐补出茶色',garnish:'柠檬角'},
+  'Cuba Libre':{ratio:[['白朗姆','50 ml'],['可乐','120 ml'],['青柠汁','10 ml']],
+    method:'高球杯加冰，挤青柠后兑可乐',garnish:'青柠角'},
+  'Last Word':{ratio:[['金酒','22.5 ml'],['绿查特酒','22.5 ml'],['马拉斯奇诺','22.5 ml'],['青柠汁','22.5 ml']],
+    method:'四等份加冰摇匀，滤入冰过的碟形杯',garnish:'糖渍樱桃'},
+};
+
 /* [性能] 酒柜图片三档图源
    原 酒柜/*.png 是 1760×2336 的母版，单张 1~4MB、35 张共 64MB。
    移动端切进「我的酒柜」要一次性拉 35 张原图，首屏直接卡住数秒。
@@ -100,6 +182,7 @@ CLASSIC_BAR.forEach(c=>{
   c.imgThumb = '酒柜/thumbs/'+c.zh+'.png';   // 列表
   c.imgMid   = '酒柜/mid/'+c.zh+'.png';      // 详情
   c.kind     = 'classic';
+  c.recipe   = CLASSIC_RECIPE[c.en]||null;   // 调酒配比（详情卡展示）
 });
 
 const KEEP_KEY='kuai_cabinet_v1';
@@ -141,6 +224,10 @@ function keepDrink(c,src,meta,btn){
     base:c.base||'—',topNote:c.topNote||'',midNote:c.midNote||'',baseNote:c.baseNote||'',
     color1:c.color1||'#7a4a1a',color2:c.color2||'#c47830',glowColor:c.glowColor||c.color1||'#a05a20',
     glass:c.glass||'',strength:c.strength||3,
+    // 配方一并存下来，否则酒柜里的珍藏只剩香调、看不到怎么做。
+    // 统一成 [[名称,用量式]]，和经典酒谱同一种格式。
+    recipe:(typeof normRecipe==='function'?normRecipe(c.recipe):[]),
+    method:c.method||'',garnish:c.garnish||'',
     note:c.comment||'',
     blend:meta&&meta.blend?meta.blend:'',      // 心情配比 / 输入文字
     at:Date.now(),
@@ -255,6 +342,37 @@ function bottleHTML(d,idx){
   </div>`;
 }
 
+/* ---- 调酒配比区块 ----
+   两种数据源共用同一张配方卡：
+     · 经典酒谱   d.recipe = {ratio,method,garnish}
+     · 珍藏自调酒 d.recipe = [[名称,用量]]，method/garnish 平铺在 d 上
+   都归一成 {rows,method,garnish} 再渲染；没配方则返回空串自动跳过。
+   材料按「名称 —— 用量」两端对齐排列，中间用点线连起来，
+   看起来像酒单/配方卡，而不是一张普通表格。 */
+function recipeHTML(d){
+  if(!d)return '';
+  const r=d.recipe;
+  let rows=[],method=d.method||'',garnish=d.garnish||'';
+  if(Array.isArray(r)){
+    rows=r;
+  }else if(r&&Array.isArray(r.ratio)){
+    rows=r.ratio;
+    method=r.method||method;
+    garnish=r.garnish||garnish;
+  }
+  if(!rows.length)return '';
+  const esc=s=>String(s).replace(/[&<>]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
+  const list=rows.map(([name,amt])=>
+    `<div class="rc-row"><span class="rc-name">${esc(name)}</span>
+       <span class="rc-dot"></span><span class="rc-amt">${esc(amt||'适量')}</span></div>`).join('');
+  return `<div class="sheet-recipe">
+    <div class="rc-hd"><span class="rc-lbl">RECIPE</span><span class="rc-zh">调酒配比</span></div>
+    <div class="rc-list">${list}</div>
+    ${method?`<div class="rc-meta"><span class="rc-k">做法</span><span class="rc-v">${esc(method)}</span></div>`:''}
+    ${garnish?`<div class="rc-meta"><span class="rc-k">装饰</span><span class="rc-v">${esc(garnish)}</span></div>`:''}
+  </div>`;
+}
+
 /* ---- 详情卡 ---- */
 const sheetEl=document.getElementById('sheet');
 const sheetMask=document.getElementById('sheet-mask');
@@ -280,6 +398,7 @@ function openSheet(d,idx){
        <span class="sheet-tag">${drinkABV(d)}% ABV</span>
      </div>
      ${notes.length?`<div class="sheet-tagrow">${notes.map(n=>`<span class="sheet-tag">${n}</span>`).join('')}</div>`:''}
+     ${recipeHTML(d)}
      ${d.blend?`<div class="sheet-quote" style="font-style:normal;color:rgba(201,169,110,0.85);">来自：${d.blend}</div>`:''}
      <div class="sheet-quote">"${d.note||''}"</div>
      <div class="sheet-actions">

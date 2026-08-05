@@ -127,7 +127,6 @@
       </div>
       <div class="res-card fade-up">
         <div class="res-hd">
-          <div class="res-label">YOUR EXCLUSIVE BLEND</div>
           <div class="res-name-zh" id="r-name-zh">—</div>
           <div class="res-name-en" id="r-name-en">—</div>
         </div>
@@ -137,6 +136,15 @@
         </div>
         <div class="res-info">
           <div class="info-row"><span class="info-lbl">基酒 Base</span><span class="info-val" id="r-base">—</span></div>
+          <!-- 调酒配方：点基酒那一行展开/收起 -->
+          <div class="rx-wrap" id="r-rx-wrap">
+            <div class="rx-toggle" id="r-rx-toggle" role="button" tabindex="0" aria-expanded="false">
+              <span class="rx-toggle-lbl">调酒配方 Recipe</span>
+              <span class="rx-toggle-sum" id="r-rx-sum">—</span>
+              <span class="rx-caret">▾</span>
+            </div>
+            <div class="rx-body" id="r-rx-body"></div>
+          </div>
           <div class="notes-row">
             <div class="note-col"><div class="note-lbl">Top</div><div class="note-val" id="r-top">—</div></div>
             <div class="note-col"><div class="note-lbl">Mid</div><div class="note-val" id="r-mid">—</div></div>
@@ -149,13 +157,10 @@
             <div class="str-track"><div class="str-fill" id="r-bar" style="width:0%"></div></div>
           </div>
         </div>
-        <div class="res-quote">
-          <div class="reading-row" id="r-reading-row" style="display:none;">
-            <span class="reading-lbl">我读到的</span>
-            <span class="reading-txt" id="r-reading"></span>
-          </div>
-          <div class="quote-txt" id="r-comment">—</div>
-          <div class="mode-badge" id="r-mode"></div>
+        <!-- AI 读到的：保留内容，去掉「我读到的」标题，让这句话直接说话。
+             调酒师的一句话与模式标识仍下线，避免卡片信息过载。 -->
+        <div class="res-quote" id="r-reading-row" style="display:none;">
+          <div class="reading-txt" id="r-reading"></div>
         </div>
       </div>
       <div class="res-actions">
@@ -304,7 +309,6 @@
       </div>
       <div class="res-card fade-up">
         <div class="res-hd">
-          <div class="res-label">YOUR MOOD BLEND</div>
           <div class="res-name-zh" id="m-name-zh">—</div>
           <div class="res-name-en" id="m-name-en">—</div>
         </div>
@@ -315,6 +319,15 @@
         <div class="res-info">
           <div class="info-row"><span class="info-lbl">心情配比 Blend</span><span class="info-val" id="m-blend">—</span></div>
           <div class="info-row"><span class="info-lbl">基酒 Base</span><span class="info-val" id="m-base">—</span></div>
+          <!-- 调酒配方：点基酒那一行展开/收起 -->
+          <div class="rx-wrap" id="m-rx-wrap">
+            <div class="rx-toggle" id="m-rx-toggle" role="button" tabindex="0" aria-expanded="false">
+              <span class="rx-toggle-lbl">调酒配方 Recipe</span>
+              <span class="rx-toggle-sum" id="m-rx-sum">—</span>
+              <span class="rx-caret">▾</span>
+            </div>
+            <div class="rx-body" id="m-rx-body"></div>
+          </div>
           <div class="notes-row">
             <div class="note-col"><div class="note-lbl">Top</div><div class="note-val" id="m-top">—</div></div>
             <div class="note-col"><div class="note-lbl">Mid</div><div class="note-val" id="m-mid">—</div></div>
@@ -329,7 +342,6 @@
         </div>
         <div class="res-quote">
           <div class="quote-txt" id="m-comment">—</div>
-          <div class="mode-badge" id="m-mode"></div>
         </div>
       </div>
       <div class="res-actions">
@@ -356,6 +368,7 @@
   -->
 </div>
 
+<!-- 离屏画布：宽高由 export.js 按配方长度动态设定，这里的值只是占位 -->
 <canvas id="card-canvas" width="750" height="1180"></canvas>
 
 <!-- ===== 卡片预览弹窗：点↓后先看到成品，再决定保存 ===== -->

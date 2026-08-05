@@ -461,6 +461,7 @@ function renderMoodResult(c,moods,byAI,deep){
     ? deep.path.map(p=>p.emo+p.txt).join(' → ')
     : moods.map(m=>m.emo+m.txt).join(' + ');
   document.getElementById('m-base').textContent=c.base||'—';
+  renderRecipe('m',c);
   document.getElementById('m-top').textContent=c.topNote||'—';
   document.getElementById('m-mid').textContent=c.midNote||'—';
   document.getElementById('m-base-note').textContent=c.baseNote||'—';
@@ -470,9 +471,6 @@ function renderMoodResult(c,moods,byAI,deep){
   setTimeout(()=>{document.getElementById('m-bar').style.width=abvBarPct(abv)+'%';},300);
   document.getElementById('m-glow').style.background=c.glowColor||c.color1;
   renderGlassInto('m-glass',c);
-  document.getElementById('m-mode').textContent=
-    (deep?'↓ 纵向探究 · ':'')+
-    (byAI?'✦ AI 理解 · 为你现调':'○ 本地引擎');
 
   // 调酒师卡片
   fillBarCard('mood-bar-card','mood-card-headline','mood-card-body','mood-card-tag',c,byAI);
@@ -490,7 +488,6 @@ document.getElementById('mood-remix').addEventListener('click',resetMood);
 document.getElementById('mood-save').addEventListener('click',()=>{
   if(!lastMoodDrink)return;
   saveCard(lastMoodDrink,{
-    label:'YOUR MOOD BLEND',
     from:lastMoodBlend?'今夜心情：'+lastMoodBlend:'',
   });
 });

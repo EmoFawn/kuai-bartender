@@ -6,8 +6,6 @@
      徽标 / 酒名 / 杯型插画 / 配方信息 / 一句话 / 落款
    ======================================================== */
 
-const CARD_W=750,CARD_H=1180,DPR=2;   // DPR=2 输出 1500×2360，够清晰
-
 let cardBlob=null,cardName='苦艾酒卡';
 
 /* ---- 圆角矩形路径 ---- */
@@ -19,15 +17,21 @@ function rrPath(ctx,x,y,w,h,r){
   ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
 }
 
-/* ---- 文本按宽度换行，返回实际占用高度 ---- */
-function wrapText(ctx,text,cx,y,maxW,lh){
+/* ---- 文本按宽度切行（只算不画，供排版预测高度用） ---- */
+function wrapLines(ctx,text,maxW){
   const chars=String(text||'').split('');
-  let line='',lines=[];
+  let line='';const lines=[];
   chars.forEach(ch=>{
     if(ctx.measureText(line+ch).width>maxW&&line){lines.push(line);line=ch;}
     else line+=ch;
   });
   if(line)lines.push(line);
+  return lines;
+}
+
+/* ---- 文本按宽度换行，返回实际占用高度 ---- */
+function wrapText(ctx,text,cx,y,maxW,lh){
+  const lines=wrapLines(ctx,text,maxW);
   lines.forEach((l,i)=>ctx.fillText(l,cx,y+i*lh));
   return lines.length*lh;
 }
@@ -98,13 +102,91 @@ function drawGlassArt(ctx,cx,cy,c){
   ctx.restore();
 }
 
+/* ---- 卡片高度自适应 ----
+   加了配方区之后，材料条数（3~8 行）、做法长度都会浮动，
+   写死 1180px 会出现「长配方压到落款」或「短配方底部一大片空」。
+   这里先按内容量算出实际需要的高度，再据此建画布。 */
+const CARD_W=750,CARD_H_BASE=1180,DPR=2;   // DPR=2 输出 1500×2360+，够清晰
+
+/* 配方区的排版常量 —— measureRecipeH 与 drawRecipe 必须共用同一套值，
+   否则「量的高度」和「画的高度」对不上，就会出现底部空一大块或压到落款。 */
+const RX_PAD=100;             // 左右留白
+const RX_META_X=148;          // 「做法/装饰」说明文的缩进起点
+const RX_META_W=CARD_W-RX_PAD-RX_META_X;   // 说明文实际可用宽
+const RX_ROW_H=30, RX_META_LH=24;
+
+/* 量一遍配方区要占多高（与 drawRecipe 的绘制节奏严格一致） */
+function measureRecipeH(ctx,rows,method,garnish){
+  if(!rows.length)return 0;
+  let h=34;                              // 小标题「配方 RECIPE」
+  h+=rows.length*RX_ROW_H;               // 每味材料一行
+  ctx.font='15px "Noto Serif SC",serif';
+  if(method)h+=14+wrapLines(ctx,method,RX_META_W).length*RX_META_LH;
+  if(garnish)h+=10+wrapLines(ctx,garnish,RX_META_W).length*RX_META_LH;
+  return h+16;
+}
+
+/* ---- 画配方区：材料两端对齐 + 中间点线，和页面里的配方卡同一套语言 ---- */
+function drawRecipe(ctx,y,rows,method,garnish){
+  const W=CARD_W;
+  // 小标题
+  ctx.textAlign='left';
+  ctx.fillStyle='rgba(201,169,110,0.6)';
+  ctx.font='11px "Inter",sans-serif';
+  ctx.fillText('配方 RECIPE',RX_PAD,y);
+  y+=30;
+
+  rows.forEach(([name,amt])=>{
+    ctx.textAlign='left';
+    ctx.fillStyle='#e8ddd0';ctx.font='17px "Noto Serif SC",serif';
+    ctx.fillText(name,RX_PAD,y);
+    const nameW=ctx.measureText(name).width;
+    const amtTxt=String(amt||'适量');
+    ctx.textAlign='right';
+    ctx.fillStyle='#c9a96e';ctx.font='15px "Inter",sans-serif';
+    ctx.fillText(amtTxt,W-RX_PAD,y);
+    const amtW=ctx.measureText(amtTxt).width;
+    // 中间点线：起于材料名之后，止于用量之前
+    const x1=RX_PAD+nameW+10,x2=W-RX_PAD-amtW-10;
+    if(x2>x1){
+      ctx.strokeStyle='rgba(201,169,110,0.3)';
+      ctx.lineWidth=1;ctx.setLineDash([2,3]);
+      ctx.beginPath();ctx.moveTo(x1,y-5);ctx.lineTo(x2,y-5);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    y+=RX_ROW_H;
+  });
+
+  // 做法 / 装饰：左侧小标签 + 右侧多行说明
+  [['做法',method],['装饰',garnish]].forEach(([k,v])=>{
+    if(!v)return;
+    y+=12;
+    ctx.textAlign='left';
+    ctx.fillStyle='rgba(201,169,110,0.85)';ctx.font='12px "Noto Serif SC",serif';
+    ctx.fillText(k,RX_PAD,y);
+    ctx.fillStyle='rgba(232,221,208,0.7)';ctx.font='15px "Noto Serif SC",serif';
+    const lines=wrapLines(ctx,v,RX_META_W);
+    lines.forEach((l,i)=>ctx.fillText(l,RX_META_X,y+i*RX_META_LH));
+    y+=lines.length*RX_META_LH-12;
+  });
+  return y+16;
+}
+
 /* ---- 主绘制 ---- */
 function drawCard(c,meta){
   const canvas=document.getElementById('card-canvas');
-  canvas.width=CARD_W*DPR;canvas.height=CARD_H*DPR;
+  const ctx0=canvas.getContext('2d');
+
+  // ① 先量：配方与文案各占多高，据此决定画布总高
+  const rows=(typeof drinkRecipe==='function')?drinkRecipe(c):[];
+  const method=c.method||'',garnish=c.garnish||'';
+  const rxH=measureRecipeH(ctx0,rows,method,garnish);
+  const H=Math.round(CARD_H_BASE+rxH);
+
+  canvas.width=CARD_W*DPR;canvas.height=H*DPR;
   const ctx=canvas.getContext('2d');
-  ctx.scale(DPR,DPR);
-  const W=CARD_W,H=CARD_H,cx=W/2;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  const W=CARD_W,cx=W/2;
   const glow=c.glowColor||c.color1||'#a05a20';
 
   // 背景：深色渐变 + 酒色氛围光
@@ -128,7 +210,6 @@ function drawCard(c,meta){
   ctx.font='600 19px "Noto Serif SC","Songti SC",serif';
   ctx.fillText('苦 艾',cx,96);
   ctx.strokeStyle='rgba(201,169,110,0.45)';ctx.lineWidth=1;
-  [[-1,1],[1,-1]].forEach(()=>{});
   ctx.beginPath();ctx.moveTo(cx-92,90);ctx.lineTo(cx-46,90);ctx.stroke();
   ctx.beginPath();ctx.moveTo(cx+46,90);ctx.lineTo(cx+92,90);ctx.stroke();
   ctx.save();ctx.translate(cx-34,90);ctx.rotate(Math.PI/4);
@@ -136,18 +217,14 @@ function drawCard(c,meta){
   ctx.save();ctx.translate(cx+34,90);ctx.rotate(Math.PI/4);
   ctx.fillStyle='rgba(201,169,110,0.7)';ctx.fillRect(-3,-3,6,6);ctx.restore();
 
-  // 来源标签
-  ctx.fillStyle='#6b6255';
-  ctx.font='11px "Inter",sans-serif';
-  ctx.fillText(meta&&meta.label?meta.label:'YOUR EXCLUSIVE BLEND',cx,130);
-
-  // 酒名（中/英）
+  // 酒名（中/英）—— 原先徽标下还有一行 YOUR EXCLUSIVE BLEND 之类的来源标签，
+  // 与页面同步去掉，酒名直接顶上来
   ctx.fillStyle='#efe6d8';
   ctx.font='700 42px "Noto Serif SC","Songti SC",serif';
-  const nameH=wrapText(ctx,c.poeticZh||'今夜这一杯',cx,190,W-160,52);
+  const nameH=wrapText(ctx,c.poeticZh||'今夜这一杯',cx,180,W-160,52);
   ctx.fillStyle='#8a7f6c';
   ctx.font='italic 18px "Playfair Display",Georgia,serif';
-  ctx.fillText(c.poeticEn||'',cx,190+nameH+2);
+  ctx.fillText(c.poeticEn||'',cx,180+nameH+2);
 
   // 杯型插画
   drawGlassArt(ctx,cx,468,c);
@@ -163,7 +240,15 @@ function drawCard(c,meta){
   ctx.fillStyle='#e8ddd0';ctx.font='19px "Noto Serif SC",serif';
   ctx.fillText(c.base||'—',W-100,y);
 
-  y+=28;divider(ctx,y,90,W-90);y+=36;
+  // 配方区（紧跟基酒，与页面的信息顺序一致）
+  if(rows.length){
+    y+=28;divider(ctx,y,90,W-90);y+=34;
+    y=drawRecipe(ctx,y,rows,method,garnish);
+    divider(ctx,y,90,W-90);y+=36;
+  }else{
+    y+=28;divider(ctx,y,90,W-90);y+=36;
+  }
+
   // 三段香调
   [['TOP',c.topNote],['MID',c.midNote],['BASE',c.baseNote]].forEach((it,i)=>{
     const x=100+i*((W-200)/3);
