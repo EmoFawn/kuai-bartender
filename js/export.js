@@ -172,16 +172,50 @@ function drawRecipe(ctx,y,rows,method,garnish){
   return y+16;
 }
 
+/* ---- 同频歌单区（只有音乐调酒会带 meta.tunes） ----
+   分享出去的卡片如果只有一杯酒，别人看不出这是哪首歌带来的；
+   把三首推荐一起印上，这张卡就同时是「一杯酒」和「一份歌单」。 */
+const TN_ROW_H=44;            // 一首歌占的高度（歌名 + 歌手两行）
+function measureTunesH(ctx,tunes){
+  if(!tunes||!tunes.length)return 0;
+  return 34+tunes.length*TN_ROW_H+10;   // 小标题 + N 行 + 收尾
+}
+function drawTunes(ctx,y,tunes){
+  const W=CARD_W;
+  ctx.textAlign='left';
+  ctx.fillStyle='rgba(201,169,110,0.6)';
+  ctx.font='11px "Inter",sans-serif';
+  ctx.fillText('这杯酒的性格也很适合听 SAME FREQUENCY',RX_PAD,y);
+  y+=32;
+  tunes.forEach((t,i)=>{
+    ctx.textAlign='left';
+    ctx.fillStyle='rgba(201,169,110,0.5)';ctx.font='13px "Inter",sans-serif';
+    ctx.fillText(String(i+1).padStart(2,'0'),RX_PAD,y);
+    // 歌名：一行放不下就只取第一行，卡片上不硬塞
+    ctx.fillStyle='#e8ddd0';ctx.font='17px "Noto Serif SC",serif';
+    const titleLines=wrapLines(ctx,t.title||'',W-RX_PAD*2-34);
+    ctx.fillText(titleLines[0]||'',RX_PAD+34,y);
+    if(t.artist){
+      ctx.fillStyle='rgba(201,169,110,0.72)';ctx.font='13px "Noto Serif SC",serif';
+      ctx.fillText(t.artist,RX_PAD+34,y+20);
+    }
+    y+=TN_ROW_H;
+  });
+  return y+2;
+}
+
 /* ---- 主绘制 ---- */
 function drawCard(c,meta){
   const canvas=document.getElementById('card-canvas');
   const ctx0=canvas.getContext('2d');
 
-  // ① 先量：配方与文案各占多高，据此决定画布总高
+  // ① 先量：配方与歌单各占多高，据此决定画布总高
   const rows=(typeof drinkRecipe==='function')?drinkRecipe(c):[];
   const method=c.method||'',garnish=c.garnish||'';
   const rxH=measureRecipeH(ctx0,rows,method,garnish);
-  const H=Math.round(CARD_H_BASE+rxH);
+  const tunes=(meta&&Array.isArray(meta.tunes))?meta.tunes.slice(0,3):[];
+  const tnH=measureTunesH(ctx0,tunes);
+  const H=Math.round(CARD_H_BASE+rxH+tnH);
 
   canvas.width=CARD_W*DPR;canvas.height=H*DPR;
   const ctx=canvas.getContext('2d');
@@ -278,7 +312,14 @@ function drawCard(c,meta){
 
   y=barY+44;divider(ctx,y,90,W-90);
 
-  // 心情来源（如果有）
+  // 同频歌单（仅音乐调酒会传 meta.tunes）
+  if(tunes.length){
+    y+=34;
+    y=drawTunes(ctx,y,tunes);
+    divider(ctx,y,90,W-90);
+  }
+
+  // 心情 / 歌曲来源（如果有）
   y+=36;
   ctx.textAlign='center';
   if(meta&&meta.from){

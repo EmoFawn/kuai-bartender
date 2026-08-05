@@ -877,14 +877,224 @@ textarea::placeholder{color:var(--muted);}
 }
 .keep-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
 
-/* ======= CABINET / MOOD / MUSIC PANES ======= */
-.coming-soon{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:16px;padding:40px;text-align:center;
+/* ==========================================================
+   音乐调酒 PANE · MUSIC MIX
+   ----------------------------------------------------------
+   视觉主角是一张黑胶唱片：
+     · 输入态 —— 静止待放，唱针抬起，中心标签贴着你写的歌名
+     · 调制态 —— 转起来，唱针落下
+     · 结果页 —— 缩成小图标钉在歌曲档案左侧
+   唱片用纯 CSS 画：多层 repeating-conic/radial 渐变模拟纹路与反光，
+   不引入任何图片资源（这个项目全站零外部依赖）。
+   ========================================================== */
+#pane-music{position:relative;}
+
+.vinyl-wrap{
+  position:relative;width:210px;height:210px;
+  margin:26px auto 0;flex-shrink:0;
 }
-.coming-icon{font-size:48px;opacity:0.4;}
-.coming-title{font-size:18px;color:var(--text);letter-spacing:0.05em;}
-.coming-sub{font-size:13px;color:var(--muted);line-height:1.7;max-width:260px;}
+.vinyl{
+  position:absolute;inset:0;border-radius:50%;
+  background:
+    /* 中心到外圈的整体明暗 */
+    radial-gradient(circle at 50% 50%,#242018 0%,#15120c 46%,#0d0b07 100%);
+  box-shadow:0 14px 40px rgba(0,0,0,0.7),
+             inset 0 0 0 1px rgba(201,169,110,0.12);
+  overflow:hidden;
+}
+/* 唱纹：极细的同心圆环，靠 repeating-radial-gradient 一次画完 */
+.vinyl-grooves{
+  position:absolute;inset:0;border-radius:50%;
+  background:repeating-radial-gradient(circle at 50% 50%,
+    rgba(255,255,255,0.045) 0 1px,
+    transparent 1px 4px);
+  /* 内圈标签区不需要纹路，用 mask 掏空中心 */
+  mask:radial-gradient(circle at 50% 50%,transparent 0 27%,#000 28%);
+  -webkit-mask:radial-gradient(circle at 50% 50%,transparent 0 27%,#000 28%);
+}
+/* 中心纸标签：暗金，像老唱片的圆标 */
+.vinyl-label{
+  position:absolute;left:50%;top:50%;width:38%;height:38%;
+  transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle at 38% 32%,#3a2f1c,#221a10 70%,#1a140c);
+  border:1px solid rgba(201,169,110,0.32);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:inset 0 0 14px rgba(0,0,0,0.6);
+}
+/* 中心轴孔 */
+.vinyl-label::after{
+  content:'';position:absolute;left:50%;top:50%;
+  width:7px;height:7px;margin:-3.5px 0 0 -3.5px;
+  border-radius:50%;background:#0a0805;
+  box-shadow:inset 0 0 0 1px rgba(201,169,110,0.2);
+}
+.vinyl-label-txt{
+  position:relative;z-index:1;
+  font-family:'Noto Serif SC','Songti SC',serif;
+  font-size:12px;color:var(--gold);letter-spacing:0.06em;
+  max-width:84%;text-align:center;line-height:1.25;
+  /* 歌名可能偏长，超出就省略，别把标签撑破 */
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  /* 轴孔在正中，文字往上让一点，避免压在孔上 */
+  transform:translateY(-8px);
+  transition:color 0.3s;
+}
+/* 斜向高光：一道扫过盘面的反光，让唱片"有光泽" */
+.vinyl-shine{
+  position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:linear-gradient(115deg,
+    transparent 32%,
+    rgba(255,255,255,0.055) 45%,
+    rgba(255,255,255,0.1) 50%,
+    rgba(255,255,255,0.05) 55%,
+    transparent 68%);
+}
+/* 转动：只在 .spinning 容器下生效，输入态保持静止 */
+@keyframes vinylSpin{to{transform:rotate(360deg);}}
+.vinyl-wrap.spinning .vinyl{animation:vinylSpin 3.4s linear infinite;}
+/* 高光不该跟着转（真实唱片的反光来自固定光源），单独抵消 */
+.vinyl-wrap.spinning .vinyl-shine{animation:vinylSpin 3.4s linear infinite reverse;}
+
+/* 唱针：右上角的支点 + 斜臂，落针时向盘面转过去 */
+.tonearm{
+  position:absolute;right:-4px;top:2px;width:96px;height:96px;
+  pointer-events:none;
+  transform-origin:88% 12%;
+  rotate:-26deg;
+  transition:rotate 0.9s cubic-bezier(.34,1.3,.64,1);
+}
+.tonearm.on{rotate:6deg;}
+.tonearm-base{
+  position:absolute;right:2px;top:2px;width:17px;height:17px;
+  border-radius:50%;
+  background:radial-gradient(circle at 34% 30%,#4a4238,#241f18);
+  border:1px solid rgba(201,169,110,0.3);
+}
+.tonearm-rod{
+  position:absolute;right:9px;top:10px;
+  width:74px;height:3px;border-radius:2px;
+  transform-origin:right center;rotate:34deg;
+  background:linear-gradient(90deg,rgba(201,169,110,0.22),rgba(201,169,110,0.75));
+  box-shadow:0 1px 3px rgba(0,0,0,0.6);
+}
+.tonearm-head{
+  position:absolute;right:69px;top:47px;
+  width:12px;height:8px;border-radius:2px;
+  background:linear-gradient(180deg,#5a5048,#2a241c);
+  border:1px solid rgba(201,169,110,0.34);
+  rotate:34deg;
+}
+.music-hint{
+  margin-top:16px;flex-shrink:0;
+  font-family:'Playfair Display','Georgia',serif;font-style:italic;
+  font-size:13px;color:var(--muted);white-space:nowrap;
+  transition:color 0.3s;
+}
+
+/* ---- 歌名输入 ---- */
+.song-input{
+  width:100%;background:transparent;border:none;outline:none;
+  color:var(--text);font-family:'Noto Serif SC','Songti SC',serif;
+  font-size:16px;line-height:1.6;
+}
+.song-input::placeholder{color:var(--muted);}
+/* 引子歌单：三个可直接点的例子，本身就是最好的输入示范，
+   所以不再额外写一行「歌手可以带上」的说明文字。 */
+.song-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px;}
+.song-chip{
+  font-size:10.5px;padding:5px 11px;border-radius:999px;cursor:pointer;
+  background:rgba(201,169,110,0.06);
+  border:1px solid rgba(201,169,110,0.18);
+  color:rgba(201,169,110,0.85);letter-spacing:0.02em;
+  transition:border-color 0.22s,color 0.22s,background 0.22s;
+}
+.song-chip:hover{border-color:var(--gold);color:#e8c880;background:rgba(201,169,110,0.12);}
+
+/* ---- 结果页：与另两个模式同样的溢出滚动策略 ---- */
+#music-sub-result{padding-bottom:36px;justify-content:flex-start;}
+#music-sub-result>*{flex-shrink:0;}
+
+/* 歌曲档案卡：唱片小图 + 歌名/歌手/元信息 */
+.song-card{
+  width:calc(100% - 28px);max-width:432px;margin:14px auto 0;
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(30,24,14,0.96),rgba(20,17,10,0.96));
+  border:1px solid rgba(201,169,110,0.18);
+}
+.song-card-disc{width:56px;height:56px;flex-shrink:0;position:relative;}
+/* 结果页的小唱片：慢速常转，暗示"还在放" */
+.vinyl.mini{
+  position:absolute;inset:0;
+  animation:vinylSpin 8s linear infinite;
+}
+.vinyl.mini .vinyl-label{width:40%;height:40%;border-width:1px;}
+.vinyl.mini .vinyl-label::after{width:4px;height:4px;margin:-2px 0 0 -2px;}
+.vinyl.mini .vinyl-label-txt{font-size:9px;transform:translateY(-5px);}
+.song-card-main{flex:1;min-width:0;}
+.song-title{
+  font-size:15.5px;color:var(--text);line-height:1.35;
+  font-family:'Noto Serif SC','Songti SC',serif;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.song-artist{
+  font-size:11.5px;color:rgba(201,169,110,0.85);margin-top:3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+/* 模型没能确认这首歌时，歌手一栏调暗，如实告诉用户 */
+.song-artist.dim{color:rgba(107,98,85,0.9);font-style:italic;}
+.song-metas{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;}
+.song-meta{
+  font-size:9.5px;padding:2.5px 7px;border-radius:999px;
+  background:rgba(255,255,255,0.035);
+  border:1px solid rgba(255,255,255,0.08);
+  color:rgba(232,221,208,0.8);letter-spacing:0.02em;white-space:nowrap;
+}
+.song-meta i{
+  font-style:normal;color:rgba(107,98,85,0.95);margin-right:4px;
+  font-family:'Inter',-apple-system,sans-serif;font-size:9px;
+}
+/* 一句听感：独立成段，斜体，像唱片内页的一行注解 */
+.song-listen{
+  width:calc(100% - 28px);max-width:432px;margin:9px auto 0;
+  padding:0 4px;text-align:center;
+  font-size:12px;color:rgba(107,98,85,0.95);font-style:italic;line-height:1.75;
+}
+
+/* ---- 同频歌单：这杯酒的性格也很适合听 ---- */
+.tune-list{
+  width:calc(100% - 28px);max-width:432px;margin:12px auto 0;
+  padding:14px 16px 12px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(201,169,110,0.05),rgba(0,0,0,0.18));
+  border:1px solid rgba(201,169,110,0.16);
+  position:relative;overflow:hidden;
+}
+.tune-list::before{
+  content:'';position:absolute;left:0;top:12px;bottom:12px;width:2px;
+  background:linear-gradient(180deg,transparent,var(--gold),transparent);
+  opacity:0.5;
+}
+.tune-hd{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;}
+.tune-lbl{font-family:'Inter',-apple-system,sans-serif;font-size:8.5px;
+  letter-spacing:0.24em;color:rgba(201,169,110,0.6);}
+.tune-zh{font-size:12px;color:rgba(232,221,208,0.82);letter-spacing:0.06em;}
+.tune-rows{display:flex;flex-direction:column;}
+.tune-row{
+  display:flex;align-items:flex-start;gap:11px;
+  padding:9px 0;border-top:1px solid rgba(255,255,255,0.05);
+}
+.tune-row:first-child{border-top:none;padding-top:2px;}
+/* 序号用等宽数字，像歌单上的曲目号 */
+.tune-n{
+  flex-shrink:0;width:20px;padding-top:2px;
+  font-family:'Inter',-apple-system,sans-serif;font-size:11px;
+  color:rgba(201,169,110,0.55);letter-spacing:0.04em;
+  font-variant-numeric:tabular-nums;
+}
+.tune-main{flex:1;min-width:0;}
+.tune-title{font-size:13px;color:rgba(232,221,208,0.94);line-height:1.4;}
+.tune-artist{font-size:11px;color:rgba(201,169,110,0.75);margin-top:2px;}
+.tune-why{font-size:11px;color:rgba(107,98,85,0.95);line-height:1.65;margin-top:4px;}
 
 /* ======= UTILS ======= */
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
@@ -981,6 +1191,15 @@ textarea::placeholder{color:var(--muted);}
   .bottle:hover .bottle-pic{transform:none;box-shadow:none;}
   .bottle:hover .bottle-pic img{transform:none;filter:saturate(0.94) brightness(0.9);}
   .deep-up:hover{background:transparent;color:var(--gold);}
+  .song-chip:hover{border-color:rgba(201,169,110,0.18);color:rgba(201,169,110,0.85);
+    background:rgba(201,169,110,0.06);}
+}
+
+/* ---- 减少动效偏好：唱片常转对晕动症用户不友好，直接停 ---- */
+@media (prefers-reduced-motion:reduce){
+  .vinyl-wrap.spinning .vinyl,
+  .vinyl-wrap.spinning .vinyl-shine,
+  .vinyl.mini{animation:none;}
 }
 
 /* ---- 安全区：iPhone 底部手势条 / 刘海 ---- */
@@ -1054,4 +1273,31 @@ textarea::placeholder{color:var(--muted);}
   .sheet{max-height:92%;}
   .sheet-pic{height:150px;}
   .card-preview-wrap{max-height:52vh;}
+}
+
+/* ---- 音乐调酒的移动端 / 矮屏适配 ----
+   唱片是这个模式里最大的一块固定尺寸，矮屏上必须跟着缩，
+   否则「唱片 + 输入框 + 按钮」会把落下唱针的主按钮顶出视口。 */
+@media (max-width:400px){
+  .song-card{padding:12px 13px;gap:12px;}
+  .song-title{font-size:14.5px;}
+  .tune-list{padding:12px 13px 10px;}
+  .tune-title{font-size:12.5px;}
+}
+@media (max-height:760px){
+  .vinyl-wrap{width:178px;height:178px;margin-top:18px;}
+  .music-hint{margin-top:12px;font-size:12px;}
+  #music-sub-input .input-area{margin-top:30px !important;}
+  #music-sub-mixing .vinyl-wrap{margin-top:38px !important;}
+}
+@media (max-height:670px){
+  .vinyl-wrap{width:150px;height:150px;margin-top:12px;}
+  .tonearm{width:76px;height:76px;}
+  .tonearm-rod{width:58px;}
+  .tonearm-head{right:54px;top:37px;}
+  .vinyl-label-txt{font-size:10.5px;transform:translateY(-6px);}
+  #music-sub-input .input-area{margin-top:22px !important;}
+  .song-input{font-size:15px;}
+  .song-chips{margin-top:10px;}
+  #music-sub-mixing .vinyl-wrap{margin-top:26px !important;}
 }

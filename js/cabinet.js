@@ -439,9 +439,10 @@ document.querySelectorAll('.cab-seg').forEach(s=>{
   });
 });
 
-/* ---- 两个星号按钮 ---- */
+/* ---- 三个结果页的星号按钮 ---- */
 const btnKeep=document.getElementById('btn-keep');
 const moodKeep=document.getElementById('mood-keep');
+const musicKeep=document.getElementById('music-keep');
 
 btnKeep.addEventListener('click',()=>{
   if(!lastRec)return;
@@ -450,6 +451,12 @@ btnKeep.addEventListener('click',()=>{
 moodKeep.addEventListener('click',()=>{
   if(!lastMoodDrink)return;
   keepDrink(lastMoodDrink,'mood',{blend:lastMoodBlend||''},moodKeep);
+});
+// 音乐调酒：来源写成「♪ 歌名 - 歌手」，进柜后一眼知道这杯是哪首歌来的
+if(musicKeep)musicKeep.addEventListener('click',()=>{
+  if(typeof lastMusicDrink==='undefined'||!lastMusicDrink)return;
+  keepDrink(lastMusicDrink,'music',
+    {blend:(typeof musicFromLine==='function'?musicFromLine():'')},musicKeep);
 });
 
 // 每次出结果都把星号复位（新的一杯还没收藏）

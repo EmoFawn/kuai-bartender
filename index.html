@@ -43,8 +43,7 @@
     <div class="tab" data-tab="cabinet">我的酒柜</div>
     <div class="tab active" data-tab="chat">对话调酒</div>
     <div class="tab" data-tab="mood">心情调酒</div>
-    <!-- 音乐调酒：功能未开发，前端入口暂时下线（保留代码，勿删） -->
-    <!-- <div class="tab" data-tab="music">音乐调酒</div> -->
+    <div class="tab" data-tab="music">音乐调酒</div>
   </div>
 
   <!-- pane: 我的酒柜 -->
@@ -357,15 +356,150 @@
     </div>
   </div>
 
-  <!-- pane: 音乐调酒（入口已下线，容器保留但不渲染，方便后续恢复）
-  <div class="pane" id="pane-music" style="flex:1;width:100%;max-width:480px;">
-    <div class="coming-soon">
-      <div class="coming-icon">🎵</div>
-      <div class="coming-title">音乐调酒</div>
-      <div class="coming-sub">哼一段旋律，或者告诉我你在听什么，我来调一杯同频的酒。</div>
+  <!-- ===== pane: 音乐调酒 =====
+       三段流程与另外两个模式对齐：输入 → 调制中 → 结果。
+       视觉主角换成一张黑胶唱片：输入时静止待放，调制时转起来，
+       结果页停下并把歌曲档案摊在旁边。 -->
+  <div class="pane" id="pane-music" style="flex:1;width:100%;max-width:480px;position:relative;">
+
+    <!-- sub: 输入歌名 -->
+    <div class="sub active" id="music-sub-input">
+      <div class="vinyl-wrap" id="vinyl-wrap">
+        <div class="vinyl" id="vinyl-disc">
+          <div class="vinyl-grooves"></div>
+          <div class="vinyl-label" id="vinyl-label">
+            <span class="vinyl-label-txt">苦艾</span>
+          </div>
+          <div class="vinyl-shine"></div>
+        </div>
+        <div class="tonearm" id="tonearm">
+          <div class="tonearm-base"></div>
+          <div class="tonearm-rod"></div>
+          <div class="tonearm-head"></div>
+        </div>
+      </div>
+      <div class="music-hint" id="music-hint">Drop the needle...</div>
+
+      <div class="input-area" style="margin-top:44px;">
+        <div class="textarea-wrap">
+          <input id="song-input" class="song-input" type="text" maxlength="60"
+            placeholder="今晚在听什么？" autocomplete="off" spellcheck="false">
+        </div>
+        <!-- 手气不好时给几个引子，降低"面对空输入框"的压力 -->
+        <div class="song-chips" id="song-chips"></div>
+      </div>
+
+      <div class="btn-wrap">
+        <button class="btn-main" id="btn-music-mix" disabled>
+          <span>♪</span><span id="btn-music-txt">先写一首歌</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- sub: 调制中（唱片转起来） -->
+    <div class="sub" id="music-sub-mixing">
+      <div class="vinyl-wrap spinning" style="margin-top:52px;">
+        <div class="vinyl">
+          <div class="vinyl-grooves"></div>
+          <div class="vinyl-label" id="vinyl-label-2">
+            <span class="vinyl-label-txt" id="vinyl-song">—</span>
+          </div>
+          <div class="vinyl-shine"></div>
+        </div>
+        <div class="tonearm on">
+          <div class="tonearm-base"></div>
+          <div class="tonearm-rod"></div>
+          <div class="tonearm-head"></div>
+        </div>
+      </div>
+      <div class="music-hint">Now listening...</div>
+      <div class="mix-steps" id="music-mix-steps"></div>
+    </div>
+
+    <!-- sub: 结果 -->
+    <div class="sub" id="music-sub-result" style="padding-bottom:36px;">
+      <div style="width:100%;max-width:432px;padding:12px 14px 0;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <span id="music-back" style="color:var(--muted);cursor:pointer;font-size:20px;">←</span>
+        <span style="font-family:'Inter',sans-serif;font-size:10px;letter-spacing:0.2em;color:var(--muted);">SOUND &amp; SPIRIT</span>
+        <span id="music-save" style="color:var(--muted);cursor:pointer;font-size:20px;">↓</span>
+      </div>
+
+      <!-- 歌曲档案：这一杯的来源，放在酒卡之前 -->
+      <div class="song-card fade-up" id="song-card">
+        <div class="song-card-disc">
+          <div class="vinyl mini">
+            <div class="vinyl-grooves"></div>
+            <div class="vinyl-label"><span class="vinyl-label-txt">♪</span></div>
+          </div>
+        </div>
+        <div class="song-card-main">
+          <div class="song-title" id="s-title">—</div>
+          <div class="song-artist" id="s-artist">—</div>
+          <div class="song-metas" id="s-metas"></div>
+        </div>
+      </div>
+      <div class="song-listen" id="s-listen" style="display:none;"></div>
+
+      <!-- 酒卡：与另外两个模式完全同构 -->
+      <div class="res-card fade-up">
+        <div class="res-hd">
+          <div class="res-name-zh" id="u-name-zh">—</div>
+          <div class="res-name-en" id="u-name-en">—</div>
+        </div>
+        <div class="glass-vis">
+          <div class="glass-glow" id="u-glow"></div>
+          <svg class="glass-svg" id="u-glass" viewBox="0 0 150 180"></svg>
+        </div>
+        <div class="res-info">
+          <div class="info-row"><span class="info-lbl">基酒 Base</span><span class="info-val" id="u-base">—</span></div>
+          <div class="rx-wrap" id="u-rx-wrap">
+            <div class="rx-toggle" id="u-rx-toggle" role="button" tabindex="0" aria-expanded="false">
+              <span class="rx-toggle-lbl">调酒配方 Recipe</span>
+              <span class="rx-toggle-sum" id="u-rx-sum">—</span>
+              <span class="rx-caret">▾</span>
+            </div>
+            <div class="rx-body" id="u-rx-body"></div>
+          </div>
+          <div class="notes-row">
+            <div class="note-col"><div class="note-lbl">Top</div><div class="note-val" id="u-top">—</div></div>
+            <div class="note-col"><div class="note-lbl">Mid</div><div class="note-val" id="u-mid">—</div></div>
+            <div class="note-col"><div class="note-lbl">Base</div><div class="note-val" id="u-base-note">—</div></div>
+          </div>
+          <div class="str-row">
+            <div class="info-row" style="border:none;padding:0 0 3px;">
+              <span class="info-lbl">酒精度 ABV</span><span class="info-val" id="u-pct">—</span>
+            </div>
+            <div class="str-track"><div class="str-fill" id="u-bar" style="width:0%"></div></div>
+          </div>
+        </div>
+        <!-- 为什么这首歌是这杯酒 -->
+        <div class="res-quote" id="u-reading-row" style="display:none;">
+          <div class="reading-txt" id="u-reading"></div>
+        </div>
+      </div>
+
+      <div class="res-actions">
+        <button class="btn-sec" id="music-remix">↺ 换一首歌</button>
+        <div class="btn-ico" id="music-keep" title="珍藏进酒柜">✦</div>
+      </div>
+
+      <!-- 同频歌单：把这一杯延长成一整晚 -->
+      <div class="tune-list" id="tune-list" style="display:none;">
+        <div class="tune-hd">
+          <span class="tune-lbl">SAME FREQUENCY</span>
+          <span class="tune-zh">这杯酒的性格也很适合听</span>
+        </div>
+        <div class="tune-rows" id="tune-rows"></div>
+      </div>
+
+      <!-- 调酒师卡片 -->
+      <div class="bar-card loading" id="music-bar-card">
+        <div class="bar-card-tag" id="music-card-tag">—</div>
+        <div class="bar-card-headline" id="music-card-headline">—</div>
+        <div class="bar-card-body" id="music-card-body">—</div>
+      </div>
     </div>
   </div>
-  -->
 </div>
 
 <!-- 离屏画布：宽高由 export.js 按配方长度动态设定，这里的值只是占位 -->
@@ -395,6 +529,7 @@
 <script src="js/chat.js"></script>
 <script src="js/mood.js"></script>
 <script src="js/deep.js"></script>
+<script src="js/music.js"></script>
 <script src="js/cabinet.js"></script>
 <script src="js/export.js"></script>
 </body>

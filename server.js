@@ -5,7 +5,8 @@
  *  1) 提供静态页面（index.html）
  *  2) POST /api/bartend  { mood }  → 大模型 → 返回鸡尾酒 JSON
  *  3) POST /api/moodblend { moods } → 大模型 → 返回心情调酒 JSON
- *  4) POST /api/mix  { song }       → 大模型理解 → 返回音乐调酒 JSON
+ *  4) POST /api/musicmix  { song }  → 大模型 → 返回 { song, primary, similar }
+ *                                      歌曲档案 + 为它调的酒 + 同曲风 3 首
  *
  * 配置（环境变量）：
  *  LLM_API_KEY   大模型 Key（OpenAI 兼容，如 DeepSeek / OpenAI）
@@ -80,14 +81,16 @@ function apiJSON(urlStr, { method = "GET", headers = {}, body = null } = {}) {
 // 兼容旧调用（音乐调酒 searchSong / llmMix 还在用这个名字）
 const httpsJSON = apiJSON;
 
-/* ---------- 1. 联网搜歌（可选，Serper.dev） ---------- */
+/* ---------- 联网搜歌（可选，Serper.dev） ----------
+   没有 SERP_KEY 也能跑：大模型自身的音乐知识足以覆盖绝大多数歌曲，
+   联网只是为了补上冷门歌 / 新歌的准确信息，属于「锦上添花」。 */
 async function searchSong(song) {
   if (!SERP_KEY) return "";
   try {
     const r = await httpsJSON("https://google.serper.dev/search", {
       method: "POST",
       headers: { "X-API-KEY": SERP_KEY },
-      body: { q: `${song} 歌曲 歌手 曲风 情绪`, gl: "cn", hl: "zh-cn", num: 5 },
+      body: { q: `${song} 歌曲 歌手 专辑 曲风 发行年份`, gl: "cn", hl: "zh-cn", num: 5 },
     });
     const items = (r.json && r.json.organic) || [];
     const snippets = items.map((i) => `- ${i.title}: ${i.snippet || ""}`).join("\n");
@@ -97,80 +100,6 @@ async function searchSong(song) {
   } catch (e) {
     return "";
   }
-}
-
-/* ---------- 2. 大模型理解并调酒 ---------- */
-async function llmMix(song, context) {
-  const sys = `你是一位既懂音乐又懂调酒的创意大师。用户给你一首歌，你要：
-1. 理解这首歌的曲风、情绪、意境、时代感；
-2. 为它匹配一款"听感一致"的鸡尾酒（可以是经典款，也可以原创命名）；
-3. 用富有画面感的语言解释「为什么这首歌是这杯酒」。
-只输出 JSON，不要多余文字，格式：
-{
-  "song": "歌名(可补全歌手)",
-  "mood": "两三个情绪关键词",
-  "genre": "曲风",
-  "cocktail": "酒名",
-  "cocktail_en": "英文名",
-  "color": "#十六进制主色(贴合歌曲氛围)",
-  "recipe": [["材料","用量"], ...],
-  "reason": "为什么这首歌配这杯酒(2-3句，有画面感)"
-}`;
-  const user = `歌曲：《${song}》
-${context ? "网络参考资料：\n" + context : "(无联网资料，凭你的音乐知识判断)"}`;
-
-  const r = await httpsJSON(`${LLM_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${LLM_API_KEY}` },
-    body: {
-      model: LLM_MODEL,
-      temperature: 0.9,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: sys },
-        { role: "user", content: user },
-      ],
-    },
-  });
-  if (r.status !== 200 || !r.json) {
-    throw new Error("LLM 调用失败: " + (r.raw || r.status));
-  }
-  const content = r.json.choices[0].message.content;
-  return JSON.parse(content);
-}
-
-/* ---------- 3. 本地降级（无 Key 时的示例，保证能跑） ---------- */
-function localFallback(song) {
-  const palette = [
-    { c: "#7b5cff", m: "深邃 / 迷幻", g: "电子", ck: "星海霓虹", en: "Neon Cosmos",
-      r: [["伏特加","45ml"],["蓝橙利口酒","20ml"],["苏打水","适量"]],
-      why: "合成器的电流感像蓝橙在杯壁上流动，一口下去是整片赛博夜色。" },
-    { c: "#ff5e9c", m: "甜蜜 / 心动", g: "流行情歌", ck: "绯色副歌", en: "Rosy Chorus",
-      r: [["金酒","40ml"],["荔枝利口酒","20ml"],["蔓越莓汁","40ml"]],
-      why: "副歌一上来就是满屏粉红泡泡，荔枝的甜正好接住那句告白。" },
-    { c: "#e6a94a", m: "慵懒 / 复古", g: "爵士 / 民谣", ck: "琥珀慢板", en: "Amber Adagio",
-      r: [["威士忌","45ml"],["苦精","2dash"],["方糖","1颗"],["橙皮","1片"]],
-      why: "萨克斯的尾音像威士忌在冰上化开，慢悠悠地把夜拉长。" },
-    { c: "#3bd4c9", m: "清爽 / 治愈", g: "City Pop", ck: "薄荷海风", en: "Mint Breeze",
-      r: [["白朗姆","30ml"],["薄荷糖浆","15ml"],["苏打水","90ml"],["青柠","2角"]],
-      why: "轻快的鼓点配薄荷气泡，像开着车窗吹过一整个夏天的海岸线。" },
-  ];
-  // 用歌名 hash 稳定选一款
-  let h = 0; for (const ch of song) h = (h * 31 + ch.charCodeAt(0)) % palette.length;
-  const p = palette[h];
-  return {
-    song, mood: p.m, genre: p.g, cocktail: p.ck, cocktail_en: p.en,
-    color: p.c, recipe: p.r, reason: p.why,
-    _demo: true,
-  };
-}
-
-/* ---------- 路由 ---------- */
-async function handleMix(song) {
-  if (!song || !song.trim()) throw new Error("请输入歌名");
-  if (!LLM_API_KEY) return localFallback(song.trim());
-  const context = await searchSong(song.trim());
-  return await llmMix(song.trim(), context);
 }
 
 /* ---------- 调酒师人格与输出规范 ---------- */
@@ -344,6 +273,138 @@ ${moods.map(m => `- ${m.txt}（风味倾向：${m.flavor}）`).join("\n")}
   return data;
 }
 
+/* ========================================================
+   音乐调酒 · MUSIC MIX
+   ----------------------------------------------------------
+   用户只给一个歌名，一次大模型调用要同时产出三样东西：
+     ① song    这首歌的档案（歌手/曲风/年份/情绪/一句听感）
+     ② primary 一杯"听感一致"的鸡尾酒（完整复用 SCHEMA_DOC 的结构，
+               这样前端能直接套用现成的结果卡、配方区、导出卡）
+     ③ similar 3 首同曲风推荐（把这一杯延长成一整晚的歌单）
+   为什么合并成一次调用：拆成三次会让等待时间翻三倍，
+   而这三件事本来就共享同一份"对这首歌的理解"，分开反而容易前后不一致。
+   ======================================================== */
+const MUSIC_SCHEMA = `严格只输出 JSON，不要 markdown 代码块，不要任何解释文字。
+
+{
+  "song": {
+    "title":   "歌曲正名（用户可能写错别字或只写一半，你要补全）",
+    "artist":  "演唱者 / 乐队",
+    "album":   "所属专辑；确实不知道就给空字符串",
+    "year":    "发行年份，如「2003」；不确定给空字符串",
+    "genre":   "曲风，2-8字（如「City Pop」「后摇」「粤语情歌」）",
+    "tempo":   "速度感，只能是这三个之一：慢 / 中速 / 快",
+    "mood":    "这首歌的情绪，2-3个词用「/」分隔（如「慵懒 / 微醺」）",
+    "listen":  "一句听感描述，20-40字。写这首歌听起来像什么，不要复述歌词也不要写乐评术语。",
+    "known":   true 或 false —— 你是否真的认识这首歌。不认识就给 false，
+               此时其余字段按用户给的字面信息尽力推测，不要编造歌手和专辑。
+  },
+  "primary": {
+    "name":      "英文酒名",
+    "poeticZh":  "诗意酒名，4-8字，要能听出这首歌的影子（这是展示主标题）",
+    "poeticEn":  "诗意英文名，3-6词",
+    "base":      "基酒（威士忌 / 金酒 / 朗姆 / 龙舌兰 / 伏特加 / 白兰地 / 香槟 …）",
+    "topNote":   "前调，4-10字",
+    "midNote":   "中调，4-10字",
+    "baseNote":  "尾调，4-10字",
+    "color1":    "#酒液渐变浅色",
+    "color2":    "#酒液渐变深色",
+    "glowColor": "#杯底光晕色",
+    "glass":     "杯型，只能是：coupe / rocks / highball / flute",
+    "strength":  酒感强度整数 1-5,
+    "abv":       预估酒精度数字,
+    "recipe":    [["材料名","用量"], ["材料名","用量"]],
+    "method":    "做法，一句话",
+    "garnish":   "装饰物；不需要给空字符串",
+    "comment":   "调酒师递上酒时说的一句话，1-2句，对着用户说，用「你」",
+    "reading":   "为什么这首歌是这杯酒，1-2句。必须把具体的音乐特征（编曲/音色/节奏/人声质感）和具体的味觉对上，不要只写氛围形容词。",
+    "card": {
+      "headline": "分享卡主标题，6-12字",
+      "body":     "分享卡正文，20-40字",
+      "tag":      "2-4字标签（如「深夜」「公路」）"
+    }
+  },
+  "similar": [
+    { "title":"歌名", "artist":"歌手", "why":"和这首歌像在哪，12-20字，要具体" },
+    { "title":"...",  "artist":"...",  "why":"..." },
+    { "title":"...",  "artist":"...",  "why":"..." }
+  ]
+}`;
+
+async function llmMusicMix(song, context) {
+  const sys = `${PERSONA}
+
+这次你还多了一重身份：一个听过很多歌的选曲人。用户给你一首歌，你要先真正听懂它，再把它翻译成一杯酒。
+
+把歌变成酒的原则 —— 必须落到具体的音乐要素上，不能只靠情绪形容词：
+- 速度决定酒体：慢歌配醇厚、需要慢慢喝的（加冰的烈酒、奶油质地）；快歌配爽利有气泡的长饮。
+- 音色决定基酒：失真吉他与鼓机 → 烈而糙（黑麦威士忌、龙舌兰）；
+  钢琴与弦乐 → 干净清透（金酒、伏特加）；铜管与萨克斯 → 温润（波本、白兰地）；
+  合成器与电子音色 → 冷冽带气泡；木吉他与民谣 → 朗姆、蜂蜜、柑橘那一类朴素的甜。
+- 混响与空间感决定香调层次：干、近、贴耳的录音 → 香调简洁；空旷、大量残响 → 香调层次多、余味长。
+- 年代决定气质：老录音配经典款（古典、曼哈顿、边车），新音乐可以原创。
+
+推荐同曲风的 3 首歌时：
+- 必须真实存在，别编歌名。风格、年代、情绪三者至少两项贴近这首歌。
+- 三首之间要有区分度：不要给三首同一个歌手，也不要三首都是同一张专辑的。
+- why 要写具体的相似点（编曲手法 / 人声质感 / 情绪走向），不要写"同样很好听"这种空话。
+
+如果你不认识用户给的这首歌：把 song.known 设为 false，
+不要编造歌手和专辑（宁可留空），但依然要根据歌名的字面意象认真调一杯，
+并在 primary.reading 里说明这杯是照着歌名的意象调的。
+
+${MUSIC_SCHEMA}`;
+
+  const user = `客人递过来一张歌单，上面只写了：《${song}》
+
+${context ? "以下是联网查到的参考资料，可信度优先于你的记忆：\n" + context : "（没有联网资料，凭你自己的音乐积累判断）"}
+
+请给出这首歌的档案、为它调的那一杯，以及能接着放下去的 3 首歌。`;
+
+  const data = await llmJSON(sys, user, { temperature: 0.9 });
+  if (!data.primary) throw new Error("大模型返回结构异常");
+  normalizeDrink(data.primary);
+  data.song = normalizeSong(data.song, song);
+  data.similar = normalizeSimilar(data.similar);
+  return data;
+}
+
+/* 歌曲档案兜底：任何字段缺失都不该让前端出现 "undefined" */
+const TEMPOS = ["慢", "中速", "快"];
+function normalizeSong(s, raw) {
+  s = (s && typeof s === "object") ? s : {};
+  s.title  = (s.title  || raw || "无名之曲").trim();
+  s.artist = typeof s.artist === "string" ? s.artist.trim() : "";
+  s.album  = typeof s.album  === "string" ? s.album.trim()  : "";
+  s.year   = String(s.year || "").trim();
+  s.genre  = (s.genre || "未知曲风").trim();
+  s.tempo  = TEMPOS.includes(s.tempo) ? s.tempo : "中速";
+  s.mood   = (s.mood || "—").trim();
+  s.listen = (s.listen || "").trim();
+  s.known  = s.known !== false;
+  return s;
+}
+
+/* 推荐歌单兜底：宁可少给，也不要给出半条残缺的数据 */
+function normalizeSimilar(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter(x => x && typeof x === "object" && x.title)
+    .slice(0, 3)
+    .map(x => ({
+      title:  String(x.title).trim(),
+      artist: String(x.artist || "").trim(),
+      why:    String(x.why || "").trim(),
+    }));
+}
+
+async function handleMusicMix(song) {
+  const s = (song || "").trim();
+  if (!s) throw new Error("请先告诉我一首歌");
+  const context = await searchSong(s);
+  return await llmMusicMix(s, context);
+}
+
 /* ---------- HTTP 服务 ---------- */
 const server = http.createServer((req, res) => {
   // 心情调酒 API
@@ -388,19 +449,23 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
-  // API
-  if (req.method === "POST" && req.url === "/api/mix") {
+  // 音乐调酒 API
+  if (req.method === "POST" && req.url === "/api/musicmix") {
     let body = "";
     req.on("data", (c) => (body += c));
     req.on("end", async () => {
+      const json = (code, obj) => {
+        res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(obj));
+      };
       try {
         const { song } = JSON.parse(body || "{}");
-        const result = await handleMix(song);
-        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify(result));
+        if (!LLM_API_KEY) return json(200, { _noKey: true });
+        if (!song || !String(song).trim()) return json(400, { error: "请先告诉我一首歌" });
+        const result = await handleMusicMix(song);
+        json(200, result);
       } catch (e) {
-        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ error: e.message }));
+        json(500, { error: e.message });
       }
     });
     return;
@@ -441,6 +506,6 @@ server.listen(PORT, "0.0.0.0", () => {
     console.log(`   LLM_BASE_URL=https://api.deepseek.com/v1`);
     console.log(`   LLM_MODEL=deepseek-chat`);
   }
-  console.log(`   联网搜索: ${SERP_KEY ? "已开启 ✅" : "未开启（音乐调酒可选）"}`);
+  console.log(`   联网搜歌: ${SERP_KEY ? "已开启 ✅" : "未开启（音乐调酒改由模型自身音乐知识判断）"}`);
   console.log("");
 });
